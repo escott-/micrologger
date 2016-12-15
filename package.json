@@ -1,0 +1,24 @@
+{
+  "name": "micrologs",
+  "version": "1.0.1",
+  "description": "koa microservice application and request logging",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "keywords": [
+    "logging",
+    "koa",
+    "middleware",
+    "microservice"
+  ],
+  "author": "Erik Scott",
+  "license": "MIT",
+  "dependencies": {
+    "logrotate-stream": "^0.2.5"
+  },
+  "devDependencies": {
+    "mocha": "^3.2.0",
+    "chai": "^3.5.0"
+  }
+}
