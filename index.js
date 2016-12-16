@@ -20,7 +20,7 @@ class Logger {
     this.opts = opts;
   }
   app () {
-    if(this.opts.env === "development") {
+    if(this.opts.disk) {
       let log = {
         class: 'application',
         host: os.hostname(),
@@ -33,6 +33,45 @@ class Logger {
       console.log(clc.blue(data.toString()))
     }
   }
+
+  debug (ctx) {
+    let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
+    let requestClass = (ctx.request.header['x-correlation-id']) ? 'service_request' : 'client_request';
+    let correlationId = uuid.v4();
+    let request = {
+      class: requestClass,
+      correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
+      host: os.hostname(),
+      pid: process.pid,
+      path: ctx.request.url,
+      request_id: uuid.v4(),
+      method: ctx.request.method,
+      request_time: new Date,
+      message: `${ctx.request.method} ${ctx.request.url}`,
+      severity: 'INFO'
+    }
+    let response = {
+      class: requestClass,
+      correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
+      host: os.hostname(),
+      pid: process.pid,
+      path: ctx.request.url,
+      request_id: uuid.v4(),
+      method: ctx.request.method,
+      request_time: new Date,
+      message: `${ctx.request.method} ${ctx.request.url}`,
+      response_time: request.request_time,
+      meta: {},
+      client: '',
+      status: ctx.response.status,
+      resolution_time: '',
+      severity: severity
+    }
+    this.pipeLogs(request);
+    this.pipeLogs(response);
+  }
+
+
   request () {
     const self = this;
     return function *(next) {
@@ -50,9 +89,21 @@ class Logger {
       function done(evt) {
         res.removeListener("finish", onFinish);
         res.removeListener("close", onClose);
-        if(self.opts.env === "development") {
+        /*
+        if(debug) {
           console.log(ctx);
           // call debug method for development 
+        }
+        */
+        let request = {
+          id: uuid.v4(),
+          timestamp: new Date,
+          req: ctx.request
+        }
+        let response = {
+          id: request.id, 
+          timestamp: new Date,
+          res: ctx.response
         }
       }
     }
