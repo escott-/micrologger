@@ -1,12 +1,11 @@
 'use strict';
+const zmq = require('zmq')
+  , sock = zmq.socket('pub');
 /*
   Options:
   {
-    meta: {
-      team: 'platform',
-      project: 'User Authentication',
-    },
-    disk: true,
+    env: 'development',
+    disk: true || false,
     logFolder: './logs'
     zmq: { host: 'localhost', port: 5555 }
   }
@@ -18,22 +17,26 @@ const logrotate = require('logrotate-stream');
 class Logger {
   constructor (opts) {
     this.opts = opts;
-  }
-  app () {
-    if(this.opts.disk) {
-      let log = {
-        class: 'application',
-        host: os.hostname(),
-        pid: process.pid,
-        level: level,
-        timestamp: new Date,
-        message: data.toString()
-      }
-      this.pipeLogs(log);
-      console.log(clc.blue(data.toString()))
+    if(this.opts.disk === false && this.opts.env !== 'development') {
+      sock.bindSync(`tcp://${this.opts.zmq.host}:${this.opts.zmq.port}`);
     }
   }
-
+  app () {
+    let log = {
+      class: 'application',
+      host: os.hostname(),
+      pid: process.pid,
+      level: level,
+      timestamp: new Date,
+      message: data.toString()
+    }
+    if(this.opts.disk) {
+      this.pipeLogs(log);
+      console.log(clc.blue(data.toString()))
+    } else {
+      sock.send(['app', JSON.stringify(log)]);
+    }
+  }
   debug (ctx) {
     let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
     let requestClass = (ctx.request.header['x-correlation-id']) ? 'service_request' : 'client_request';
@@ -89,12 +92,10 @@ class Logger {
       function done(evt) {
         res.removeListener("finish", onFinish);
         res.removeListener("close", onClose);
-        /*
         if(debug) {
           console.log(ctx);
           // call debug method for development 
         }
-        */
         let request = {
           id: uuid.v4(),
           timestamp: new Date,
@@ -111,7 +112,8 @@ class Logger {
   pipeLogs (data) {
     let bufferStream = new stream.PassThrough()
     bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
-    let toLogFile = logrotate({ file: './logs/out.log', size: '100k', keep: 7 });
+
+    let toLogFile = logrotate({ file: this.opts.logFolder, size: '100k', keep: 7 });
     bufferStream.pipe(toLogFile);
   }
 }
