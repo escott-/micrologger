@@ -1,121 +1,145 @@
 'use strict';
-const zmq = require('zmq')
-  , sock = zmq.socket('pub');
-/*
-  Options:
-  {
-    env: 'development',
-    disk: true || false,
-    logFolder: './logs'
-    zmq: { host: 'localhost', port: 5555 }
-  }
-*/
-const os = require('os');
-const stream = require('stream');
-const logrotate = require('logrotate-stream');
+const os = require('os') 
+  , stream = require('stream')
+  , logrotate = require('logrotate-stream')
+  , zmq = require('zmq')
+  , sock = zmq.socket('pub')
+  , clc = require('cli-color')
+  , humanize = require('humanize-number')
+  , uuid = require('uuid')
 
-class Logger {
-  constructor (opts) {
-    this.opts = opts;
-    if(this.opts.disk === false && this.opts.env !== 'development') {
-      sock.bindSync(`tcp://${this.opts.zmq.host}:${this.opts.zmq.port}`);
-    }
+function app(severity, data) {
+  let log = {
+    class: 'application',
+    host: os.hostname(),
+    pid: process.pid,
+    severity: severity.toUpperCase(),
+    timestamp: new Date,
+    message: data.toString()
   }
-  app () {
-    let log = {
-      class: 'application',
-      host: os.hostname(),
-      pid: process.pid,
-      level: level,
-      timestamp: new Date,
-      message: data.toString()
-    }
-    if(this.opts.disk) {
-      this.pipeLogs(log);
-      console.log(clc.blue(data.toString()))
-    } else {
-      sock.send(['app', JSON.stringify(log)]);
-    }
+  sock.send(['app', JSON.stringify(log)]);
+  if(process.env.NODE_ENV === "development") {
+    pipeLogs(log);
+    console.log(clc.green(data.toString()))
+  } else {
+    sock.send(['app', JSON.stringify(log)]);
   }
-  debug (ctx) {
-    let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
-    let requestClass = (ctx.request.header['x-correlation-id']) ? 'service_request' : 'client_request';
-    let correlationId = uuid.v4();
-    let request = {
-      class: requestClass,
-      correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
-      host: os.hostname(),
-      pid: process.pid,
-      path: ctx.request.url,
-      request_id: uuid.v4(),
-      method: ctx.request.method,
-      request_time: new Date,
-      message: `${ctx.request.method} ${ctx.request.url}`,
-      severity: 'INFO'
+}
+function request() {
+  return function *(next) {
+    let reqTime = new Date;
+    try {
+      yield next;
+    } catch (err) {
+      throw err;
     }
-    let response = {
-      class: requestClass,
-      correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
-      host: os.hostname(),
-      pid: process.pid,
-      path: ctx.request.url,
-      request_id: uuid.v4(),
-      method: ctx.request.method,
-      request_time: new Date,
-      message: `${ctx.request.method} ${ctx.request.url}`,
-      response_time: request.request_time,
-      meta: {},
-      client: '',
-      status: ctx.response.status,
-      resolution_time: '',
-      severity: severity
-    }
-    this.pipeLogs(request);
-    this.pipeLogs(response);
-  }
-
-
-  request () {
-    const self = this;
-    return function *(next) {
-      try {
-        yield next;
-      } catch (err) {
-        throw err;
+    let onFinish = done.bind(null, 'finish');
+    let onClose = done.bind(null, 'close');
+    let ctx = this;
+    let res = this.res;
+    res.once("finish", onFinish);
+    res.once("close", onClose);
+    function done(evt) {
+      let resTime = new Date;
+      let resolvedTime = time(reqTime);
+      res.removeListener("finish", onFinish);
+      res.removeListener("close", onClose);
+      let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
+      let correlationId = uuid.v4();
+      let request = {
+        id: uuid.v4(),
+        class: classname,
+        host: ctx.request.host,
+        client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
+        path: ctx.request.url,
+        method: ctx.request.method,
+        timestamp: new Date,
+        correlationId: ctx.request.headers['x-correlation-id'] || correlationId
       }
-      let onFinish = done.bind(null, 'finish');
-      let onClose = done.bind(null, 'close');
-      let ctx = this;
-      let res = this.res;
-      res.once("finish", onFinish);
-      res.onse("close", onClose);
-      function done(evt) {
-        res.removeListener("finish", onFinish);
-        res.removeListener("close", onClose);
-        if(debug) {
-          console.log(ctx);
-          // call debug method for development 
-        }
-        let request = {
-          id: uuid.v4(),
-          timestamp: new Date,
-          req: ctx.request
-        }
-        let response = {
-          id: request.id, 
-          timestamp: new Date,
-          res: ctx.response
-        }
+      let response = {
+        id: request.id,
+        class: classname,
+        host: ctx.request.host,
+        client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
+        path: ctx.request.url,
+        method: ctx.request.method,
+        timestamp: new Date,
+        resolvedTime: resolvedTime,
+        correlationId: request.correlationId,
+        status: ctx.response.status,
+        responseMessage: ctx.response.message,
+        meta: {}
+      }
+      sock.send(['request', JSON.stringify(request)]);
+      sock.send(['response', JSON.stringify(response)]);
+      if(process.env.NODE_ENV === "development") {
+        dev(ctx, reqTime, resTime, resolvedTime);
+      } else {
+        sock.send(['request', JSON.stringify(request)]);
+        sock.send(['response', JSON.stringify(response)]);
       }
     }
-  }
-  pipeLogs (data) {
-    let bufferStream = new stream.PassThrough()
-    bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
-
-    let toLogFile = logrotate({ file: this.opts.logFolder, size: '100k', keep: 7 });
-    bufferStream.pipe(toLogFile);
   }
 }
 
-module.exports = Logger;
+function dev(ctx, reqTime, resTime, resolvedTime) {
+  let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
+  let requestClass = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
+  let correlationId = uuid.v4();
+  let request = {
+    class: requestClass,
+    message: `${ctx.request.method} ${ctx.request.url}`,
+    host: os.hostname(),
+    path: ctx.request.url,
+    method: ctx.request.method,
+    request_id: uuid.v4(),
+    correlation_id: ctx.request.headers['x-correlation-id'] || correlationId,
+    request_time: reqTime,
+    client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
+    pid: process.pid,
+    severity: 'INFO'
+  }
+  let response = {
+    class: requestClass,
+    message: `${ctx.response.message} - ${ctx.request.url}`,
+    host: os.hostname(),
+    client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
+    path: ctx.request.url,
+    method: ctx.request.method,
+    request_id: uuid.v4(),
+    correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
+    response_time: resTime,
+    resolution_time: resolvedTime,
+    status: ctx.response.status,
+    pid: process.pid,
+    meta: {},
+    severity: severity
+  }
+  pipeLogs(request);
+  pipeLogs(response);
+}
+
+function pipeLogs(data) {
+  let bufferStream = new stream.PassThrough()
+  bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
+  let toLogFile = logrotate({ file: './logs/out.log', size: '100k', keep: 7 });
+  bufferStream.pipe(toLogFile);
+}
+
+function time(start) {
+  var delta = new Date - start;
+  delta = delta < 10000
+    ? delta + 'ms'
+    : Math.round(delta / 1000) + 's';
+  return humanize(delta);
+}
+
+function zmqConnect(addr) {
+  sock.connect(`tcp://${addr}`);
+}
+
+module.exports = {
+  app: app,
+  zmq: zmqConnect,
+  request: request
+}
