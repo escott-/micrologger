@@ -8,24 +8,25 @@ const os = require('os')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
 
-function app(severity, data) {
+function app(level, data) {
+  data = data.toString().replace(/(?:\r\n|\r|\n)\s\s+/g, ' ');
   let log = {
     class: 'application',
     host: os.hostname(),
     pid: process.pid,
-    severity: severity.toUpperCase(),
+    severity: level.toUpperCase(),
     timestamp: new Date,
-    message: data.toString()
+    message: data
   }
   sock.send(['app', JSON.stringify(log)]);
-  if(process.env.NODE_ENV === "development") {
+  if(level === 'debug') {
     pipeLogs(log);
-    console.log(clc.green(data.toString()))
+    console.log(clc.blackBright(data))
   } else {
     sock.send(['app', JSON.stringify(log)]);
   }
 }
-function request() {
+function request(level) {
   return function *(next) {
     let reqTime = new Date;
     try {
@@ -72,7 +73,7 @@ function request() {
       }
       sock.send(['request', JSON.stringify(request)]);
       sock.send(['response', JSON.stringify(response)]);
-      if(process.env.NODE_ENV === "development") {
+      if(level == 'debug') {
         dev(ctx, reqTime, resTime, resolvedTime);
       } else {
         sock.send(['request', JSON.stringify(request)]);
@@ -115,6 +116,8 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     meta: {},
     severity: severity
   }
+  console.log(request)
+  console.log(response)
   pipeLogs(request);
   pipeLogs(response);
 }
