@@ -69,7 +69,7 @@ function request(level) {
         correlationId: request.correlationId,
         status: ctx.response.status,
         responseMessage: ctx.response.message,
-        meta: {}
+        meta: ctx.response.body
       }
       sock.send(['request', JSON.stringify(request)]);
       sock.send(['response', JSON.stringify(response)]);
