@@ -18,14 +18,14 @@ function app(level, data) {
     timestamp: new Date,
     message: data
   }
-  if(level === 'debug') {
+  if(process.env.NODE_ENV === "development") {
     pipeLogs(log);
     console.log(clc.blackBright(data))
   } else {
     sock.send(['app', JSON.stringify(log)]);
   }
 }
-function request(level) {
+function request() {
   return function *(next) {
     let reqTime = new Date;
     try {
@@ -70,7 +70,7 @@ function request(level) {
         responseMessage: ctx.response.message,
         meta: ctx.response.body
       }
-      if(level === 'debug') {
+      if(process.env.NODE_ENV === "development") {
         dev(ctx, reqTime, resTime, resolvedTime);
       } else {
         sock.send(['request', JSON.stringify(request)]);

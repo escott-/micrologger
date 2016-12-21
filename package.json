@@ -15,7 +15,11 @@
   "author": "Erik Scott",
   "license": "MIT",
   "dependencies": {
-    "logrotate-stream": "^0.2.5"
+    "cli-color": "^1.1.0",
+    "humanize-number": "0.0.2",
+    "logrotate-stream": "^0.2.5",
+    "uuid": "^3.0.1",
+    "zmq": "^2.15.3"
   },
   "devDependencies": {
     "mocha": "^3.2.0",

@@ -1,126 +1,177 @@
 # micrologger
 
-simple but helpful logs to be used with microservices and koa
+meaningful application and request logs to be used with koa microservices
 
-Support for rotating files or sending to a logging service
+Support for rotating files or sending to a logging service with ØMQ (more to come)
 
-# example for application logging
+Add to your koa application:
 
+```js
+app.use(logger.request());
 ```
-let Logger = require('micrologger');
-let logger = new Logger({
-  meta: {
-    team: 'platform',
-    project: 'User Service'
-  }
-  disk: "true",
-  folder: './logs',
-  zmq: { host: 'localhost', port: 5555 }
-});
 
-process.stdout.on('data', (data) => { 
+**Logging levels:**
+
+DEBUG
+INFO
+ERROR
+
+
+**Fields:**
+**class** - class field represents the origin of the request. application, client\_request or service\_request
+
+**host** - hostname
+
+**pid** - process id
+
+**severity** - logging level
+
+**timestamp** - UTC epoch
+
+**message** - log message with details about application, request, response or error
+
+**path** - path of request
+
+**method** - request method
+
+**request\_id** - UID generated to track the individual request
+
+**correlation\_id** - UID generated/forwarded through all services
+
+**response\_time** - UTC epoch of response
+
+**resolution\_time** - track the time for request to be resolved
+
+**status** - status code
+
+**meta** - metadata specific to the request that was made. this can be specific event data that is helpful outside system logs 
+
+The correlation id will be generated if the x-correlation-id is not found in the header. Services should pass this along in the header.
+
+In development you get all the logs. Debug mode uses rotating files and will rotate files at 100K and keep 7 files. The files will be stored in the logs folder at the project root: /logs/out0.log, /logs/out1.log, /logs/out3.log, etc...
+
+application logging in development uses debug. 
+
+```sh
+NODE_ENV=development node server
+```
+
+```js
+const logger = require('micrologger');
+proc.stdout.on('data', (data) => { 
   logger.app("info", data);
 });
-process.stderr.on('data', (data) => { 
+proc.stderr.on('data', (data) => { 
   logger.app("error", data);
 });
+```
 
-the above INFO returns:
+Example of application debug in /logs/out.log
+
+```json
 {
   "class":"application",
-  "hostname": "Eriks-MacBook-Pro.local",
-  "pid": 23844,
-  "severity": "info",
-  "timestamp": "2016-12-15T20:21:36.954Z",
-  "message": "user service listening to: 127.0.0.1:5555"
+  "host":"some-host",
+  "pid":38131,
+  "severity":"DEBUG",
+  "timestamp":"2016-12-21T17:41:01.271Z",
+  "message":"REST service listening on port: 1991"
 }
-or ERROR:
-{
-  "class": "application",
-  "hostname": "Eriks-MacBook-Pro.local",
-  "pid": 974,
-  "severity": "error",
-  "timestamp": "2016-12-13T22:50:56.019Z",
-  "message": "ReferenceError: id is not defined blah blah"
-}
-```
-# example for request logging 
-```
-app.use(logger.request());
 
-the above INFO returns:
+```
+
+Example of application error in /logs/out.log
+
+```json
+{
+  "class":"application",
+  "host":"some-host",
+  "pid":40293,
+  "severity":"ERROR",
+  "timestamp":"2016-12-21T18:00:08.582Z",
+  "message":"ReferenceError: thi is not defined at Object.module.exports.post ...rest of stack trace"
+}
+```
+
+application logging using zmq service:
+
+```js
+const logger = require('micrologger');
+logger.zmq('127.0.0.1:5555');
+proc.stdout.on('data', (data) => { 
+  logger.app("info", data);
+});
+proc.stderr.on('data', (data) => { 
+  logger.app("error", data);
+});
+```
+
+request logging with koa:
+
+```js
+app.use(logger.request());
+```
+
+Request logging will log the request and response with the following...
+
+Example of request logging (request)
+
+```json
 {
   "class":"client_request",
-  "request_id":"6db6fa99-148c-46d4-91f3-4d82ffbe15e3",
-  "correlation_id":"355167b5-9996-4048-a1a4-ffb65f3046c3",
-  "host":"Eriks-MacBook-Pro.local",
-  "pid":23845,
-  "path":"/somepath",
+  "message":"GET /status",
+  "host":"some-host",
+  "path":"/status",
   "method":"GET",
-  "request_time":"2016-12-15T20:52:30.076Z",
-  "message":"GET /somepath",
-  "response_time":"2016-12-15T20:52:30.076Z",
-  "meta":{},
-  "client":"client info",
-  "status":200,
-  "resolution_time":"8ms",
+  "request_id":"3eeb945c-f5b5-4431-a5fe-177dfae7fec5",
+  "correlation_id":"d4cc5b41-c023-49bc-a55e-558093918de4",
+  "request_time":"2016-12-21T21:05:57.620Z",
+  "client":"client-ip",
+  "pid":49078,
   "severity":"INFO"
 }
+```
 
-or ERROR:
+Example of request logging (response)
+
+```json
 {
   "class":"client_request",
-  "request_id":"a45e3d39-79ce-4c33-9ac4-58b88c533b2f",
-  "correlation_id":"770a8c3f-3a07-4939-9ec2-5a1a090692a1",
-  "host":"Eriks-MacBook-Pro.local",
-  "pid":23845,
-  "path":"/v2.0/user/login/token/creat",
-  "method":"POST",
-  "request_time":"2016-12-15T20:31:31.390Z",
-  "message":"POST /v2.0/user/login/token/creat",
-  "response_time":"2016-12-15T20:31:31.390Z",
+  "message":"Success - /status",
+  "host":"some-host",
+  "client":"client-ip",
+  "path":"/status",
+  "method":"GET",
+  "request_id":"33931f5e-9915-466c-9d23-10977ab48da6",
+  "correlation_id":"d4cc5b41-c023-49bc-a55e-558093918de4",
+  "response_time":"2016-12-21T21:05:57.920Z",
+  "resolution_time":"300ms",
+  "status":200,
+  "pid":49078,
   "meta":{},
-  "client":"client info",
-  "status":404,
-  "resolution_time":"10ms",
-  "severity":"ERROR"
+  "severity":"INFO"
 }
-
 ```
-# fields:
 
-class = type of request (client_request or service_request)
+request logging if using a zmq service:
 
-request id = UID to link log messages
+```js
+app.use(logger.request());
+logger.zmq('127.0.0.1:5555');
+```
 
-correlation id = UID generated/forwarded through the system
+**ZMQ**
 
-host = hostname 
+The module uses zmq pub/sub pattern and will publish application, request, response logs to a zmq service that subscribes to the following topics:
 
-pid = process id 
+*app*
 
-path = path of request
+*request*
 
-method = request method
+*response*
 
-request time = UTC epoch of request
-
-message = log message with details about application, request, response or error 
-
-response time = UTC epoch of response 
-
-meta = metadata specific to the request that was made.  this can be specific event data that is helpful outside system logs 
-
-client= client ip address
-
-status = status code 
-
-resolution time = track the time for request to be resolved
-
-severity = logging levels (info, error, warn, debug)
-
-options.disk
-
-
-
-
+```js
+sock.send(['app', JSON.stringify(log)]);
+sock.send(['request', JSON.stringify(request)]);
+sock.send(['response', JSON.stringify(response)]);
+```
