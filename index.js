@@ -1,5 +1,6 @@
 'use strict';
 const os = require('os') 
+  , fs = require('fs')
   , stream = require('stream')
   , logrotate = require('logrotate-stream')
   , zmq = require('zmq')
@@ -122,6 +123,9 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
 function pipeLogs(data) {
   let bufferStream = new stream.PassThrough()
   bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
+  if (!fs.existsSync('./logs')){
+    fs.mkdirSync('./logs');
+  }
   let toLogFile = logrotate({ file: './logs/out.log', size: '100k', keep: 7 });
   bufferStream.pipe(toLogFile);
 }
