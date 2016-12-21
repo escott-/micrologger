@@ -18,7 +18,6 @@ function app(level, data) {
     timestamp: new Date,
     message: data
   }
-  sock.send(['app', JSON.stringify(log)]);
   if(level === 'debug') {
     pipeLogs(log);
     console.log(clc.blackBright(data))
@@ -71,9 +70,7 @@ function request(level) {
         responseMessage: ctx.response.message,
         meta: ctx.response.body
       }
-      sock.send(['request', JSON.stringify(request)]);
-      sock.send(['response', JSON.stringify(response)]);
-      if(level == 'debug') {
+      if(level === 'debug') {
         dev(ctx, reqTime, resTime, resolvedTime);
       } else {
         sock.send(['request', JSON.stringify(request)]);
