@@ -114,8 +114,8 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     meta: {},
     severity: severity
   }
-  console.log(request)
-  console.log(response)
+  console.log(request.message);
+  console.log(response.message);
   pipeLogs(request);
   pipeLogs(response);
 }
