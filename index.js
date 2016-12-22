@@ -69,7 +69,7 @@ function request() {
         correlationId: request.correlationId,
         status: ctx.response.status,
         responseMessage: ctx.response.message,
-        meta: ctx.response.body
+        meta: ctx.response.body.meta
       }
       if(process.env.NODE_ENV === "development") {
         dev(ctx, reqTime, resTime, resolvedTime);
@@ -100,7 +100,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
   }
   let response = {
     class: requestClass,
-    message: `${ctx.response.message} - ${ctx.request.url}`,
+    message: `${ctx.response.message} - ${ctx.request.url} - ${ctx.response.status}`,
     host: os.hostname(),
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
     path: ctx.request.url,
