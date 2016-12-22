@@ -44,7 +44,7 @@ ERROR
 
 **status** - status code
 
-**meta** - metadata specific to the request that was made. this can be specific event data that is helpful outside system logs 
+**metadata** - metadata specific to the request that was made. this can be specific event data that is helpful outside system logs 
 
 The correlation id will be generated if the x-correlation-id is not found in the header. Services should pass this along in the header.
 
@@ -148,7 +148,7 @@ Example of request logging (response)
   "resolution_time":"300ms",
   "status":200,
   "pid":49078,
-  "meta":{},
+  "metadata":{},
   "severity":"INFO"
 }
 ```
