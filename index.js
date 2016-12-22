@@ -73,7 +73,7 @@ function request() {
         correlationId: request.correlationId,
         status: ctx.response.status,
         responseMessage: ctx.response.message,
-        meta: ctx.response.body.meta
+        metadata: ctx.response.body.metadata
       }
       if(process.env.NODE_ENV === "development") {
         dev(ctx, reqTime, resTime, resolvedTime);
@@ -147,7 +147,9 @@ function time(start) {
 }
 
 function zmqConnect(addr) {
-  sock.connect(`tcp://${addr}`);
+  if(process.env.NODE_ENV !== 'development') {
+    sock.connect(`tcp://${addr}`);
+  }
 }
 
 module.exports = {
