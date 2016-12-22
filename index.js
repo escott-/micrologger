@@ -21,7 +21,11 @@ function app(level, data) {
   }
   if(process.env.NODE_ENV === "development") {
     pipeLogs(log);
-    console.log(clc.blackBright(data))
+    if(level == 'error') {
+      console.log(clc.redBright(data));
+    } else {
+      console.log(clc.blackBright(data))
+    }
   } else {
     sock.send(['app', JSON.stringify(log)]);
   }
@@ -100,7 +104,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
   }
   let response = {
     class: requestClass,
-    message: `${ctx.response.message} - ${ctx.request.url} - ${ctx.response.status}`,
+    message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
     host: os.hostname(),
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
     path: ctx.request.url,
@@ -114,8 +118,12 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     meta: {},
     severity: severity
   }
-  console.log(request.message);
-  console.log(response.message);
+  console.log(clc.cyanBright(request.message));
+  if(severity === 'ERROR') {
+    console.log(clc.redBright(response.message)) 
+  } else {
+    console.log(clc.greenBright(response.message));
+  }
   pipeLogs(request);
   pipeLogs(response);
 }
