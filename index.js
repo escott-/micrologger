@@ -54,6 +54,7 @@ function request() {
       let request = {
         id: uuid.v4(),
         class: classname,
+        message: `${ctx.request.method} ${ctx.request.url}`,
         host: ctx.request.host,
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
@@ -64,6 +65,7 @@ function request() {
       let response = {
         id: request.id,
         class: classname,
+        message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
         host: ctx.request.host,
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
@@ -72,8 +74,7 @@ function request() {
         resolvedTime: resolvedTime,
         correlationId: request.correlationId,
         status: ctx.response.status,
-        responseMessage: ctx.response.message,
-        metadata: ctx.response.body.metadata
+        responseMessage: ctx.response.message
       }
       if(process.env.NODE_ENV === "development") {
         dev(ctx, reqTime, resTime, resolvedTime);
