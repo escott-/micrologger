@@ -2,9 +2,8 @@
 const os = require('os') 
   , fs = require('fs')
   , stream = require('stream')
+  , fluentlogger = require('fluent-logger')
   , logrotate = require('logrotate-stream')
-  , zmq = require('zmq')
-  , sock = zmq.socket('pub')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
@@ -16,8 +15,7 @@ function app(level, data) {
     host: os.hostname(),
     pid: process.pid,
     severity: level.toUpperCase(),
-    timestamp: new Date,
-    message: data
+    message: data.substring(0, 100)
   }
   if(process.env.NODE_ENV === "development") {
     pipeLogs(log);
@@ -27,9 +25,13 @@ function app(level, data) {
       console.log(clc.blackBright(data))
     }
   } else {
-    sock.send(['app', JSON.stringify(log)]);
+    if(level == 'error'){
+      log.trace = data;
+    }
+    fluentlogger.emit('label', log);
   }
 }
+
 function request() {
   return function *(next) {
     let reqTime = new Date;
@@ -51,43 +53,47 @@ function request() {
       res.removeListener("close", onClose);
       let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
       let correlationId = uuid.v4();
+      let localTime = moment().tz('America/Los_Angeles').format('MMMM Do YYYY, h:mm:ss a');
       let request = {
-        id: uuid.v4(),
+        request_id: uuid.v4(),
         class: classname,
         message: `${ctx.request.method} ${ctx.request.url}`,
         host: ctx.request.host,
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
-        timestamp: new Date,
-        correlationId: ctx.request.headers['x-correlation-id'] || correlationId
+        localTime: localTime,
+        correlationId: ctx.request.headers['x-correlation-id'] || correlationId,
+        severity: 'INFO',
+        meta: {}
       }
       let response = {
-        id: request.id,
+        request_id: request.id,
         class: classname,
         message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
         host: ctx.request.host,
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
-        timestamp: new Date,
+        localTime: localTime,
         resolvedTime: resolvedTime,
         correlationId: request.correlationId,
         status: ctx.response.status,
-        responseMessage: ctx.response.message
+        responseMessage: ctx.response.message,
+        severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO',
+        meta: {}
       }
       if(process.env.NODE_ENV === "development") {
         dev(ctx, reqTime, resTime, resolvedTime);
       } else {
-        sock.send(['request', JSON.stringify(request)]);
-        sock.send(['response', JSON.stringify(response)]);
+        fluentlogger.emit('label', request);
+        fluentlogger.emit('label', response);
       }
     }
   }
 }
 
 function dev(ctx, reqTime, resTime, resolvedTime) {
-  let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
   let requestClass = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
   let correlationId = uuid.v4();
   let request = {
@@ -117,7 +123,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     status: ctx.response.status,
     pid: process.pid,
     meta: {},
-    severity: severity
+    severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO'
   }
   console.log(clc.cyanBright(request.message));
   if(severity === 'ERROR') {
@@ -139,6 +145,15 @@ function pipeLogs(data) {
   bufferStream.pipe(toLogFile);
 }
 
+function collector (name, config){
+  fluentlogger.configure('tag_prefix', {
+   host: config.host,
+   port: config.port,
+   timeout: 3.0,
+   reconnectInterval: 600000 // 10 minutes
+  });
+}
+
 function time(start) {
   var delta = new Date - start;
   delta = delta < 10000
@@ -147,14 +162,8 @@ function time(start) {
   return humanize(delta);
 }
 
-function zmqConnect(addr) {
-  if(process.env.NODE_ENV !== 'development') {
-    sock.connect(`tcp://${addr}`);
-  }
-}
-
 module.exports = {
   app: app,
-  zmq: zmqConnect,
+  collector: collector,
   request: request
 }
