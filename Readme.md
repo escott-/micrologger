@@ -93,16 +93,14 @@ Example of application error in /logs/out.log
 }
 ```
 
-application logging using zmq service:
+application logging with fluentd (more collectors to come)
+
+if you're not in development you can add fluentd as the collector, logs will be sent to fluentd
 
 ```js
-const logger = require('micrologger');
-logger.zmq('127.0.0.1:5555');
-proc.stdout.on('data', (data) => { 
-  logger.app("info", data);
-});
-proc.stderr.on('data', (data) => { 
-  logger.app("error", data);
+logger.collector('fluent', {
+  host: CONFIG.internal.logging.fluent.host,
+  port: CONFIG.internal.logging.fluent.port
 });
 ```
 
