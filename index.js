@@ -4,6 +4,7 @@ const os = require('os')
   , stream = require('stream')
   , fluentlogger = require('fluent-logger')
   , logrotate = require('logrotate-stream')
+  , moment = require('moment-timezone')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
@@ -68,7 +69,7 @@ function request() {
         meta: {}
       }
       let response = {
-        request_id: request.id,
+        request_id: request.request_id,
         class: classname,
         message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
         host: ctx.request.host,
