@@ -153,25 +153,13 @@ Example of request logging (response)
 }
 ```
 
-request logging if using a zmq service:
+request logging with fluentd (more collectors to come)
+
+if you're not in development you can add fluentd as the collector, logs will be sent to fluentd
 
 ```js
-app.use(logger.request());
-logger.zmq('127.0.0.1:5555');
-```
-
-**ZMQ**
-
-The module uses zmq pub/sub pattern and will publish application, request, response logs to a zmq service that subscribes to the following topics:
-
-*app*
-
-*request*
-
-*response*
-
-```js
-sock.send(['app', JSON.stringify(log)]);
-sock.send(['request', JSON.stringify(request)]);
-sock.send(['response', JSON.stringify(response)]);
+logger.collector('fluent', {
+  host: CONFIG.internal.logging.fluent.host,
+  port: CONFIG.internal.logging.fluent.port
+});
 ```
