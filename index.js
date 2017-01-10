@@ -55,8 +55,9 @@ function request() {
       let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
       let correlationId = uuid.v4();
       let localTime = moment().tz('America/Los_Angeles').format('MMMM Do YYYY, h:mm:ss a');
+      let requestId = uuid.v4();
       let request = {
-        request_id: uuid.v4(),
+        request_id: requestId,
         class: classname,
         message: `${ctx.request.method} ${ctx.request.url}`,
         host: ctx.request.host,
@@ -69,7 +70,7 @@ function request() {
         meta: {}
       }
       let response = {
-        request_id: request.request_id,
+        request_id: requestId,
         class: classname,
         message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
         host: ctx.request.host,
@@ -97,13 +98,14 @@ function request() {
 function dev(ctx, reqTime, resTime, resolvedTime) {
   let requestClass = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
   let correlationId = uuid.v4();
+  let requestId = uuid.v4();
   let request = {
     class: requestClass,
     message: `${ctx.request.method} ${ctx.request.url}`,
     host: os.hostname(),
     path: ctx.request.url,
     method: ctx.request.method,
-    request_id: uuid.v4(),
+    request_id: requestId,
     correlation_id: ctx.request.headers['x-correlation-id'] || correlationId,
     request_time: reqTime,
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
@@ -117,7 +119,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
     path: ctx.request.url,
     method: ctx.request.method,
-    request_id: uuid.v4(),
+    request_id: requestId,
     correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
     response_time: resTime,
     resolution_time: resolvedTime,
