@@ -2,7 +2,7 @@
 
 meaningful application and request logs to be used with koa microservices
 
-Support for rotating files or sending to a logging service with ØMQ (more to come)
+Support for rotating files or sending to a logging collector fluentd (more to come)
 
 Add to your koa application:
 
