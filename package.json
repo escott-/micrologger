@@ -11,6 +11,8 @@
     "url": "https://github.com/escott-/micrologger"
   },
   "keywords": [
+    "log",
+    "logs",
     "logging",
     "koa",
     "middleware",
