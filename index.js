@@ -64,8 +64,8 @@ function request() {
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
-        localTime: localTime,
-        correlationId: ctx.request.headers['x-correlation-id'] || correlationId,
+        local_time: localTime,
+        correlation_id: ctx.request.headers['x-correlation-id'] || correlationId,
         severity: 'INFO',
         meta: {}
       }
@@ -77,11 +77,11 @@ function request() {
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
-        localTime: localTime,
-        resolvedTime: resolvedTime,
-        correlationId: request.correlationId,
+        local_time: localTime,
+        response_time: resTime,
+        resolution_time: resolvedTime,
+        correlation_id: request.correlationId,
         status: ctx.response.status,
-        responseMessage: ctx.response.message,
         severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO',
         meta: {}
       }
