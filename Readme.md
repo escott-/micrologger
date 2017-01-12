@@ -7,15 +7,19 @@ Support for rotating files or sending to a logging collector fluentd (more to co
 Add to your koa application:
 
 ```js
+const logger = require('micrologger');
 app.use(logger.request());
 ```
+
+That is all you need for micrologger to start collecting logs.
+
+The rest is what the module will add...
 
 **Logging levels:**
 
 DEBUG
 INFO
 ERROR
-
 
 **Fields:**
 **class** - class field represents the origin of the request. application, client\_request or service\_request
@@ -56,6 +60,7 @@ application logging in development uses debug.
 NODE_ENV=development node server
 ```
 
+For Application logging...
 ```js
 const logger = require('micrologger');
 proc.stdout.on('data', (data) => { 
@@ -75,7 +80,7 @@ Example of application debug in /logs/out.log
   "pid":38131,
   "severity":"DEBUG",
   "timestamp":"2016-12-21T17:41:01.271Z",
-  "message":"REST service listening on port: 1991"
+  "message":"REST service listening on port: 3000"
 }
 
 ```
@@ -98,9 +103,9 @@ application logging with fluentd (more collectors to come)
 if you're not in development you can add fluentd as the collector, logs will be sent to fluentd
 
 ```js
-logger.collector('fluent', {
-  host: CONFIG.internal.logging.fluent.host,
-  port: CONFIG.internal.logging.fluent.port
+logger.fluent({
+  host: 'localhost',
+  port: '24224'
 });
 ```
 
@@ -116,17 +121,17 @@ Example of request logging (request)
 
 ```json
 {
-  "class":"client_request",
-  "message":"GET /status",
-  "host":"some-host",
-  "path":"/status",
-  "method":"GET",
-  "request_id":"3eeb945c-f5b5-4431-a5fe-177dfae7fec5",
-  "correlation_id":"d4cc5b41-c023-49bc-a55e-558093918de4",
-  "request_time":"2016-12-21T21:05:57.620Z",
-  "client":"client-ip",
-  "pid":49078,
-  "severity":"INFO"
+  "request_id": "3eeb945c-f5b5-4431-a5fe-177dfae7fec5",
+  "class": "client_request",
+  "message": "GET /status",
+  "host": "some-host",
+  "client": "client-ip",
+  "path": "/status",
+  "method": "GET",
+  "request_time": "2016-12-21T21:05:57.620Z",
+  "correlation_id": "d4cc5b41-c023-49bc-a55e-558093918de4",
+  "severity": "INFO",
+  "meta": {}
 }
 ```
 
@@ -134,20 +139,19 @@ Example of request logging (response)
 
 ```json
 {
-  "class":"client_request",
-  "message":"Success - /status",
-  "host":"some-host",
-  "client":"client-ip",
-  "path":"/status",
-  "method":"GET",
-  "request_id":"33931f5e-9915-466c-9d23-10977ab48da6",
-  "correlation_id":"d4cc5b41-c023-49bc-a55e-558093918de4",
-  "response_time":"2016-12-21T21:05:57.920Z",
-  "resolution_time":"300ms",
-  "status":200,
-  "pid":49078,
-  "metadata":{},
-  "severity":"INFO"
+  "request_id": "33931f5e-9915-466c-9d23-10977ab48da6",
+  "class": "client_request",
+  "message": "Success - /status",
+  "host": "some-host",
+  "client": "client-ip",
+  "path": "/status",
+  "method": "GET",
+  "response_time": "2016-12-21T21:05:57.920Z",
+  "resolution_time": "300ms",
+  "correlation_id": "d4cc5b41-c023-49bc-a55e-558093918de4",
+  "status": 200,
+  "severity": "INFO",
+  "metadata": {},
 }
 ```
 
@@ -156,8 +160,8 @@ request logging with fluentd (more collectors to come)
 if you're not in development you can add fluentd as the collector, logs will be sent to fluentd
 
 ```js
-logger.collector('fluent', {
-  host: CONFIG.internal.logging.fluent.host,
-  port: CONFIG.internal.logging.fluent.port
+logger.fluent({
+  host: 'localhost',
+  port: '24224'
 });
 ```
