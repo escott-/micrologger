@@ -99,6 +99,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
   let requestClass = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
   let correlationId = uuid.v4();
   let requestId = uuid.v4();
+  let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
   let request = {
     class: requestClass,
     message: `${ctx.request.method} ${ctx.request.url}`,
@@ -126,7 +127,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     resolution_time: resolvedTime,
     status: ctx.response.status,
     pid: process.pid,
-    severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO',
+    severity: severity,
     metadata: {},
   }
   console.log(clc.cyanBright(request.message));
