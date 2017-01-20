@@ -9,12 +9,14 @@ const os = require('os')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
+  , name = JSON.parse(fs.readFileSync('package.json', 'utf8')).name
 
 let collector;
 function app(level, data) {
   data = data.toString().replace(/(?:\r\n|\r|\n)\s\s+/g, ' ');
   let log = {
     class: 'application',
+    ident: name,
     host: os.hostname(),
     pid: process.pid,
     severity: level.toUpperCase(),
@@ -59,9 +61,10 @@ function request() {
       let requestId = uuid.v4();
       let request = {
         request_id: requestId,
+        ident: name,
         class: classname,
         message: `${ctx.request.method} ${ctx.request.url}`,
-        host: ctx.request.host,
+        host: os.hostname(),
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
@@ -72,9 +75,10 @@ function request() {
       }
       let response = {
         request_id: requestId,
+        ident: name,
         class: classname,
         message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
-        host: ctx.request.host,
+        host: os.hostname(),
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
         method: ctx.request.method,
@@ -102,6 +106,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
   let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
   let request = {
     class: requestClass,
+    ident: name,
     message: `${ctx.request.method} ${ctx.request.url}`,
     host: os.hostname(),
     path: ctx.request.url,
@@ -116,6 +121,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
   }
   let response = {
     class: requestClass,
+    ident: name,
     message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
     host: os.hostname(),
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
