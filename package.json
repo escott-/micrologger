@@ -21,6 +21,7 @@
   "author": "Erik Scott",
   "license": "MIT",
   "dependencies": {
+    "app-root-path": "^2.0.1",
     "cli-color": "^1.1.0",
     "fluent-logger": "^2.2.0",
     "humanize-number": "0.0.2",

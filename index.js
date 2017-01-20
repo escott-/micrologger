@@ -9,7 +9,8 @@ const os = require('os')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
-  , name = JSON.parse(fs.readFileSync('package.json', 'utf8')).name
+  , reqlib = require('app-root-path').require
+  , name = reqlib('/package.json').name
 
 let collector;
 function app(level, data) {
