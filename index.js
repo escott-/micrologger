@@ -40,7 +40,12 @@ function app(level, data) {
 
 function request() {
   return function *(next) {
+    let ctx = this;
+    let res = ctx.res;
     let reqTime = new Date;
+    let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
+    let correlationId = ctx.request.headers['x-correlation-id'] || uuid.v4();
+    ctx.request.headers['x-correlation-id'] = correlationId;
     try {
       yield next;
     } catch (err) {
@@ -48,8 +53,6 @@ function request() {
     }
     let onFinish = done.bind(null, 'finish');
     let onClose = done.bind(null, 'close');
-    let ctx = this;
-    let res = this.res;
     res.once("finish", onFinish);
     res.once("close", onClose);
     function done(evt) {
@@ -57,8 +60,6 @@ function request() {
       let resolvedTime = time(reqTime);
       res.removeListener("finish", onFinish);
       res.removeListener("close", onClose);
-      let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
-      let correlationId = uuid.v4();
       let requestId = uuid.v4();
       let request = {
         request_id: requestId,
@@ -70,7 +71,7 @@ function request() {
         path: ctx.request.url,
         method: ctx.request.method,
         request_time: Date().toString(),
-        correlation_id: ctx.request.headers['x-correlation-id'] || correlationId,
+        correlation_id: correlationId,
         severity: 'INFO',
         metadata: {}
       }
@@ -91,7 +92,7 @@ function request() {
         metadata: {}
       }
       if(process.env.NODE_ENV === "development") {
-        dev(ctx, reqTime, resTime, resolvedTime);
+        dev(ctx, reqTime, resTime, resolvedTime, correlationId, classname);
       } else {
         collectLogs('request', request);
         collectLogs('response', response);
@@ -100,9 +101,8 @@ function request() {
   }
 }
 
-function dev(ctx, reqTime, resTime, resolvedTime) {
-  let requestClass = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
-  let correlationId = uuid.v4();
+function dev(ctx, reqTime, resTime, resolvedTime, correlationId, classname) {
+  let requestClass = classname;
   let requestId = uuid.v4();
   let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
   let request = {
@@ -113,7 +113,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     path: ctx.request.url,
     method: ctx.request.method,
     request_id: requestId,
-    correlation_id: ctx.request.headers['x-correlation-id'] || correlationId,
+    correlation_id: correlationId,
     request_time: reqTime.toString(),
     client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
     pid: process.pid,
@@ -129,7 +129,7 @@ function dev(ctx, reqTime, resTime, resolvedTime) {
     path: ctx.request.url,
     method: ctx.request.method,
     request_id: requestId,
-    correlation_id: ctx.request.header['x-correlation-id'] || correlationId,
+    correlation_id: correlationId,
     response_time: resTime.toString(),
     resolution_time: resolvedTime,
     status: ctx.response.status,
