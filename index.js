@@ -24,9 +24,9 @@ function app(level, data) {
   }
   if(process.env.NODE_ENV === "development") {
     if(level == 'error') {
-      console.log(clc.redBright(JSON.stringify(data)));
+      console.log(clc.redBright(data));
     } else {
-      console.log(clc.blackBright(JSON.stringify(data)));
+      console.log(clc.blackBright(data));
     }
   } else {
     if(level == 'error'){
