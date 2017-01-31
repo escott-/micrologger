@@ -1,16 +1,15 @@
 'use strict';
 const os = require('os') 
   , fs = require('fs')
-  , stream = require('stream')
   , fluentlogger = require('fluent-logger')
-  , logrotate = require('logrotate-stream')
   , zeromq = require('zmq')
   , sock = zeromq.socket('pub')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
-  , reqlib = require('app-root-path').require
-  , name = reqlib('/package.json').name
+  , reqPath = require('app-root-path').require
+  , name = reqPath('/package.json').name
+ 
 
 let collector;
 function app(level, data) {
@@ -24,16 +23,15 @@ function app(level, data) {
     message: data.substring(0, 100)
   }
   if(process.env.NODE_ENV === "development") {
-    pipeLogs(log);
     if(level == 'error') {
-      console.log(clc.redBright(data));
+      console.log(clc.redBright(JSON.stringify(data)));
     } else {
-      console.log(clc.blackBright(data))
+      console.log(clc.blackBright(JSON.stringify(data)));
     }
   } else {
     if(level == 'error'){
       log.trace = data;
-    }
+    } 
     collectLogs('application', log);
   }
 }
@@ -143,18 +141,6 @@ function dev(ctx, reqTime, resTime, resolvedTime, correlationId, classname) {
   } else {
     console.log(clc.greenBright(response.message));
   }
-  pipeLogs(request);
-  pipeLogs(response);
-}
-
-function pipeLogs(data) {
-  let bufferStream = new stream.PassThrough()
-  bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
-  if (!fs.existsSync('./logs')){
-    fs.mkdirSync('./logs');
-  }
-  let toLogFile = logrotate({ file: './logs/out.log', size: '100k', keep: 7 });
-  bufferStream.pipe(toLogFile);
 }
 
 // collectors 
