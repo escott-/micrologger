@@ -55,6 +55,16 @@ function logUncaughtError (err) {
   });
 }
 
+function pipeLogsToFile (data) {
+  let bufferStream = new stream.PassThrough();
+  bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
+  if (!fs.existsSync('./logs')){		
+    fs.mkdirSync('./logs');		
+  }
+  let toLogFile = logrotate({ file: './logs/out.log', size: '500k', keep: 7 });
+  bufferStream.pipe(toLogFile);
+}
+
 function request() {
   return function *(next) {
     let ctx = this;
