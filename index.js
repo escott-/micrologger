@@ -27,18 +27,32 @@ function app(app, opts) {
     sock.connect(`tcp://${opts.zmq.addr}`);
     collector = 'zmq';
   }
-  if(process.env.NODE_ENV === "development") {
-    if(level == 'error') {
-      console.log(clc.redBright(data));
-    } else {
-      console.log(clc.blackBright(data));
-    }
-  } else {
-    if(level == 'error'){
-      log.trace = data;
-    } 
-    collectLogs('application', log);
+  if(!opts || opts && opts.appLogs !== false) {
+    logUncaughtError(logToFile);
   }
+}
+
+function logUncaughtError (err) {
+  process.on('uncaughtException', function(err) {
+    err = err.stack.replace(/(?:\r\n|\r|\n)\s\s+/g, ' ');
+    let log = {
+      class: 'application',
+      ident: name,
+      host: os.hostname(),
+      pid: process.pid,
+      severity: 'INFO',
+      message: err
+    }
+    if(logToFile) {
+      pipeLogsToFile(log);
+    }
+    if(process.env.NODE_ENV === "development") {
+      console.log(clc.redBright(err));
+    } else {
+      collectLogs('application', log);
+    }
+    setTimeout(process.exit.bind(process, 1), 1000);
+  });
 }
 
 function request() {
