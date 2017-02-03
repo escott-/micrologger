@@ -19,7 +19,7 @@ function app(app, opts) {
       host: opts.fluent.host,
       port: opts.fluent.port,
       timeout: 3.0,
-      reconnectInterval: 600000 // 10 minutes
+      reconnectInterval: 600000
     });
     collector = 'fluent';
   }
@@ -27,9 +27,12 @@ function app(app, opts) {
     sock.connect(`tcp://${opts.zmq.addr}`);
     collector = 'zmq';
   }
+  if(opts && opts.logToFile === false) {
+    logToFile = false
+  } 
   if(!opts || opts && opts.appLogs !== false) {
-    logUncaughtError(logToFile);
-  }
+    logUncaughtError();
+  } 
 }
 
 function logUncaughtError (err) {
@@ -247,9 +250,6 @@ function time(start) {
   return humanize(delta);
 }
 
-module.exports = {
-  app: app,
-  fluent: fluent,
-  zmq: zmq,
-  request: request
-}
+module.exports = app
+module.exports.info = logInfo
+module.exports.error = logError
