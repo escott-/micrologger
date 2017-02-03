@@ -159,57 +159,22 @@ function request() {
         severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO',
         metadata: {}
       }
+      if(logToFile){
+        pipeLogsToFile(request);
+        pipeLogsToFile(response);
+      }
       if(process.env.NODE_ENV === "development") {
-        dev(ctx, reqTime, resTime, resolvedTime, correlationId, classname);
+        console.log(clc.cyanBright(request.message));
+        if(response.severity === 'ERROR') {
+          console.log(clc.redBright(response.message)) 
+        } else {
+          console.log(clc.greenBright(response.message));
+        }
       } else {
         collectLogs('request', request);
         collectLogs('response', response);
       }
     }
-  }
-}
-
-function dev(ctx, reqTime, resTime, resolvedTime, correlationId, classname) {
-  let requestClass = classname;
-  let requestId = uuid.v4();
-  let severity = ctx.response.status >= 400 ? 'ERROR' : 'INFO';
-  let request = {
-    class: requestClass,
-    ident: name,
-    message: `${ctx.request.method} ${ctx.request.url}`,
-    host: os.hostname(),
-    path: ctx.request.url,
-    method: ctx.request.method,
-    request_id: requestId,
-    correlation_id: correlationId,
-    request_time: reqTime.toString(),
-    client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
-    pid: process.pid,
-    severity: 'INFO',
-    metadata: {},
-  }
-  let response = {
-    class: requestClass,
-    ident: name,
-    message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
-    host: os.hostname(),
-    client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
-    path: ctx.request.url,
-    method: ctx.request.method,
-    request_id: requestId,
-    correlation_id: correlationId,
-    response_time: resTime.toString(),
-    resolution_time: resolvedTime,
-    status: ctx.response.status,
-    pid: process.pid,
-    severity: severity,
-    metadata: {},
-  }
-  console.log(clc.cyanBright(request.message));
-  if(severity === 'ERROR') {
-    console.log(clc.redBright(response.message)) 
-  } else {
-    console.log(clc.greenBright(response.message));
   }
 }
 
