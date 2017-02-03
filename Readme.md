@@ -4,15 +4,15 @@ Meaningful application and request logs to be used with koa microservices
 
 Support for rotating files and/or sending to a logging collector fluentd (more to come)
 
-Add to the top of your koa application:
+Add to the top of your koa application and pass in the koa app:
 
 ```js
 const logger = require('micrologger');
 logger(app);
 ```
-This will give you application and request logs:
+This will give you all application and request logs:
 
-Make sure to pass NODE_ENV=development for local development that will log to the console
+Make sure to pass NODE_ENV=development for local development for console logs
 
 That is all you need for micrologger to start collecting and sending logs.
 
@@ -171,12 +171,14 @@ logger(app, {
   logsToFile: false,
   requestLogs: false,
   appLogs: false,
+  backgroundColor: 'dark',
   fluent: {
     host: '127.0.0.1',
     port: '24224'
   }
 })
 ```
-* logToFile: (defaults is true)
-* requestLogs: (defaults is true)
+* logToFile: (default is true)
+* requestLogs: (default is true)
 * appLogs: (default is true)
+* backgroundColor: this is the background color of your terminal.  options are dark/light (default is dark)

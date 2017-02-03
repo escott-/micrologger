@@ -4,7 +4,7 @@ const os = require('os')
   , fluentlogger = require('fluent-logger')
   , zeromq = require('zmq')
   , sock = zeromq.socket('pub')
-  , clc = require('cli-color')
+  , chalk = require('chalk')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
   , stream = require('stream')
@@ -14,7 +14,15 @@ const os = require('os')
 
 let collector;
 let logToFile = true;
+let color = chalk.bold.white;
 function app(app, opts) {
+  if(opts && opts.backgroundColor) {
+    if(opts.backgroundColor === 'white'){
+      color = chalk.bold.black;
+    } else {
+      color = chalk.bold.white;
+    }
+  }
   if(opts && opts.fluent) {
     fluentlogger.configure('tag_prefix', {
       host: opts.fluent.host,
@@ -54,7 +62,7 @@ function logUncaughtError (err) {
       pipeLogsToFile(log);
     }
     if(process.env.NODE_ENV === "development") {
-      console.log(clc.redBright(err));
+      console.log(chalk.red.bold(err));
     } else {
       collectLogs('application', log);
     }
@@ -75,7 +83,7 @@ function logInfo (data) {
     pipeLogsToFile(log);
   }
   if(process.env.NODE_ENV === "development") {
-    console.log(clc.magentaBright(data));
+    console.log(color(data));
   } else {
     collectLogs('application', log);
   }
@@ -94,7 +102,7 @@ function logError (err) {
     pipeLogsToFile(log);
   }
   if(process.env.NODE_ENV === "development") {
-    console.log(clc.redBright(err));
+    console.log(chalk.red.bold(err));
   } else {
     collectLogs('application', log);
   }
@@ -168,11 +176,11 @@ function request() {
         pipeLogsToFile(response);
       }
       if(process.env.NODE_ENV === "development") {
-        console.log(clc.cyanBright(request.message));
+        console.log(chalk.cyan.underline.bold(request.message));
         if(response.severity === 'ERROR') {
-          console.log(clc.redBright(response.message)) 
+          console.log(chalk.red.bold(response.message));
         } else {
-          console.log(clc.greenBright(response.message));
+          console.log(chalk.green.bold(response.message));
         }
       } else {
         collectLogs('request', request);
