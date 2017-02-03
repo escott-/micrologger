@@ -12,15 +12,20 @@ const os = require('os')
  
 
 let collector;
-function app(level, data) {
-  data = data.toString().replace(/(?:\r\n|\r|\n)\s\s+/g, ' ');
-  let log = {
-    class: 'application',
-    ident: name,
-    host: os.hostname(),
-    pid: process.pid,
-    severity: level.toUpperCase(),
-    message: data.substring(0, 100)
+let logToFile = true;
+function app(app, opts) {
+  if(opts && opts.fluent) {
+    fluentlogger.configure('tag_prefix', {
+      host: opts.fluent.host,
+      port: opts.fluent.port,
+      timeout: 3.0,
+      reconnectInterval: 600000 // 10 minutes
+    });
+    collector = 'fluent';
+  }
+  if(opts && opts.zmq) {
+    sock.connect(`tcp://${opts.zmq.addr}`);
+    collector = 'zmq';
   }
   if(process.env.NODE_ENV === "development") {
     if(level == 'error') {
