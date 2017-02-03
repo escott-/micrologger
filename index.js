@@ -61,7 +61,7 @@ function logUncaughtError (err) {
     if(logToFile) {
       pipeLogsToFile(log);
     }
-    if(process.env.NODE_ENV === "development") {
+    if(process.env.NODE_ENV === 'development') {
       console.log(chalk.red.bold(err));
     } else {
       collectLogs('application', log);
@@ -82,7 +82,7 @@ function logInfo (data) {
   if(logToFile) {
     pipeLogsToFile(log);
   }
-  if(process.env.NODE_ENV === "development") {
+  if(process.env.NODE_ENV === 'development') {
     console.log(color(data));
   } else {
     collectLogs('application', log);
@@ -101,7 +101,7 @@ function logError (err) {
   if(logToFile) {
     pipeLogsToFile(log);
   }
-  if(process.env.NODE_ENV === "development") {
+  if(process.env.NODE_ENV === 'development') {
     console.log(chalk.red.bold(err));
   } else {
     collectLogs('application', log);
@@ -133,13 +133,13 @@ function request() {
     }
     let onFinish = done.bind(null, 'finish');
     let onClose = done.bind(null, 'close');
-    res.once("finish", onFinish);
-    res.once("close", onClose);
+    res.once('finish', onFinish);
+    res.once('close', onClose);
     function done(evt) {
       let resTime = new Date;
       let resolvedTime = time(reqTime);
-      res.removeListener("finish", onFinish);
-      res.removeListener("close", onClose);
+      res.removeListener('finish', onFinish);
+      res.removeListener('close', onClose);
       let requestId = uuid.v4();
       let request = {
         request_id: requestId,
@@ -175,7 +175,7 @@ function request() {
         pipeLogsToFile(request);
         pipeLogsToFile(response);
       }
-      if(process.env.NODE_ENV === "development") {
+      if(process.env.NODE_ENV === 'development') {
         console.log(chalk.cyan.underline.bold(request.message));
         if(response.severity === 'ERROR') {
           console.log(chalk.red.bold(response.message));
@@ -192,14 +192,14 @@ function request() {
 
 function collectLogs(type, data) {
   switch (collector) {
-    case "fluent":
+    case 'fluent':
       fluentlogger.emit('label', data);
       break;
-    case "zmq":
+    case 'zmq':
       sock.send([type, JSON.stringify(data)]);
       break;
     default:
-      console.log("Not a valid log collector");
+      console.log(color('Not a valid log collector'));
   }
 }
 
