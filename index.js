@@ -55,6 +55,44 @@ function logUncaughtError (err) {
   });
 }
 
+function logInfo (data) {
+  let log = {
+    class: 'application',
+    ident: name,
+    host: os.hostname(),
+    pid: process.pid,
+    severity: 'INFO',
+    message: data
+  }
+  if(logToFile) {
+    pipeLogsToFile(log);
+  }
+  if(process.env.NODE_ENV === "development") {
+    console.log(clc.magentaBright(data));
+  } else {
+    collectLogs('application', log);
+  }
+}
+
+function logError (err) {
+  let log = {
+    class: 'application',
+    ident: name,
+    host: os.hostname(),
+    pid: process.pid,
+    severity: 'ERROR',
+    message: err
+  }
+  if(logToFile) {
+    pipeLogsToFile(log);
+  }
+  if(process.env.NODE_ENV === "development") {
+    console.log(clc.redBright(err));
+  } else {
+    collectLogs('application', log);
+  }
+}
+
 function pipeLogsToFile (data) {
   let bufferStream = new stream.PassThrough();
   bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
