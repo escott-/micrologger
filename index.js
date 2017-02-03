@@ -7,9 +7,10 @@ const os = require('os')
   , clc = require('cli-color')
   , humanize = require('humanize-number')
   , uuid = require('uuid')
+  , stream = require('stream')
+  , logrotate = require('logrotate-stream')
   , reqPath = require('app-root-path').require
   , name = reqPath('/package.json').name
- 
 
 let collector;
 let logToFile = true;
@@ -32,6 +33,9 @@ function app(app, opts) {
   } 
   if(!opts || opts && opts.appLogs !== false) {
     logUncaughtError();
+  } 
+  if(!opts || opts && opts.requestLogs !== false) {
+    app.use(request());
   } 
 }
 
@@ -176,22 +180,6 @@ function request() {
       }
     }
   }
-}
-
-// collectors 
-function fluent(config) {
-  fluentlogger.configure('tag_prefix', {
-    host: config.host,
-    port: config.port,
-    timeout: 3.0,
-    reconnectInterval: 600000 // 10 minutes
-  });
-  collector = 'fluent';
-}
-
-function zmq(addr) {
-  sock.connect(`tcp://${addr}`);
-  collector = 'zmq';
 }
 
 function collectLogs(type, data) {
