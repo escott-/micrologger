@@ -4,22 +4,22 @@ Meaningful application and request logs to be used with koa microservices
 
 Support for rotating files and/or sending to a logging collector fluentd (more to come)
 
-Add to the top of your koa application and pass in the koa app:
+Add to the top of your koa application and pass in koa app:
 
 ```js
+const app = require('koa')();
 const logger = require('micrologger');
 logger(app);
 ```
 This will give you all application and request logs:
 
-Make sure to pass NODE_ENV=development for local development for console logs
+Make sure to pass NODE_ENV=development for local development
+
+Rotating log files will be saved to 'logs/out.log' in the root of your app.  Rotating files can be turned off by passing in logToFile:false
 
 That is all you need for micrologger to start collecting and sending logs.
 
-
-The following is what you will get without anything else on your part:
-
-**Logging levels:**
+**Logging severity/levels:**
 
 INFO
 ERROR
@@ -103,8 +103,6 @@ The correlation id will be generated if the x-correlation-id isn't found in the 
 NODE_ENV=development node server
 ```
 For local development you will get the following in the console: system errors, request, and response
-
-Request logging will log the request and response with the following...
 
 You can add fluentd as a collector
 
