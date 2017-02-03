@@ -1,28 +1,30 @@
 # micrologger
 
-meaningful application and request logs to be used with koa microservices
+Meaningful application and request logs to be used with koa microservices
 
-Support for rotating files or sending to a logging collector fluentd (more to come)
+Support for rotating files and/or sending to a logging collector fluentd (more to come)
 
-Add to your koa application above any router middleware:
+Add to the top of your koa application:
 
 ```js
 const logger = require('micrologger');
-app.use(logger.request());
+logger(app);
 ```
+This will give you application and request logs:
 
-Make sure to pass NODE_ENV=development for local 
+Make sure to pass NODE_ENV=development for local development that will log to the console
 
-That is all you need for micrologger to start collecting logs.
+That is all you need for micrologger to start collecting and sending logs.
 
-The rest is what the module will add...
+
+The following is what you will get without anything else on your part:
 
 **Logging levels:**
 
 INFO
 ERROR
 
-**Fields:**
+**Fields for Request Logs:**
 **class** - class field represents the origin of the request. application, client\_request or service\_request
 
 **host** - hostname
@@ -53,24 +55,7 @@ ERROR
 
 **metadata** - metadata specific to the request that was made. this can be specific event data that is helpful outside system logs 
 
-The correlation id will be generated if the x-correlation-id is not found in the header. Services should pass this along in the header.
-
-In development you get all the logs in stdout. Also, local will create rotating files and will rotate files at 100K and keep 7 files. The files will be stored in the logs folder at the project root: /logs/out0.log, /logs/out1.log, /logs/out3.log, etc...
-
-
-```sh
-NODE_ENV=development node server
-```
-
-request logging with koa:
-
-```js
-app.use(logger.request());
-```
-
-Request logging will log the request and response with the following...
-
-Example of request logging (request)
+Example of request logging (the request)
 
 ```json
 {
@@ -86,11 +71,11 @@ Example of request logging (request)
   "request_time": "2016-12-21T21:05:57.620Z",
   "pid":17636,
   "severity": "INFO",
-  "meta": {}
+  "metadata": {}
 }
 ```
 
-Example of request logging (response)
+Example of request logging (the response)
 
 ```json
 {
@@ -112,65 +97,86 @@ Example of request logging (response)
 }
 ```
 
-request logging by adding fluentd (more collectors to come)
+The correlation id will be generated if the x-correlation-id isn't found in the header. Services should pass this along in the header.
 
-if you're not using 'NODE_ENV=development' you can add fluentd as the collector, logs will be sent to fluentd
+```sh
+NODE_ENV=development node server
+```
+For local development you will get the following in the console: system errors, request, and response
 
-add the fluent block below and 
+Request logging will log the request and response with the following...
+
+You can add fluentd as a collector
+
+add the fluent block below and all the logs will be sent to fluentd
 
 ```js
-logger.fluent({
-  host: 'localhost',
-  port: '24224'
+logger(app, {
+  fluent: {
+    host: '127.0.0.1',
+    port: '24224'
+  }
 });
 ```
 
 ```sh
-NODE_ENV=production node server
-```
-
-
-For Application logging...
-```js
-const logger = require('micrologger');
-let child = spawn(process.execPath, [process.argv[1]]);
-child.stdout.on('data', function(data) {
-  logger.app('info', data.toString());
-});
-```
-
-Example of application debug in /logs/out.log
-
-```json
-{
-  "class":"application",
-  "host":"some-host",
-  "pid":38131,
-  "severity":"INFO",
-  "timestamp":"2016-12-21T17:41:01.271Z",
-  "message":"REST service listening on port: 3000"
-}
-
+node server
 ```
 
 Example of application error in /logs/out.log
 
 ```json
 {
-  "class":"application",
-  "host":"some-host",
-  "pid":40293,
-  "severity":"ERROR",
-  "timestamp":"2016-12-21T18:00:08.582Z",
-  "message":"ReferenceError: thi is not defined at Object.module.exports.post ...rest of stack trace"
+  "class": "application",
+  "host": "some-host",
+  "pid": 40293,
+  "severity": "ERROR",
+  "timestamp": "2016-12-21T18:00:08.582Z",
+  "message": "ReferenceError: thi is not defined at Object.module.exports.post ...rest of stack trace"
+}
+```
+## Log info/error
+```js
+logger.info('Info Message');
+logger.info('Some error message');
+```
+The info and error message will be logged with the following structure:
+
+```json
+{
+  "class": "application",
+  "host": "some-host",
+  "pid": 40293,
+  "severity": "INFO",
+  "timestamp": "2016-12-21T18:00:08.582Z",
+  "message": "Info Message"
 }
 ```
 
-application logging with fluentd (more collectors to come)
+```json
+{
+  "class": "application",
+  "host": "some-host",
+  "pid": 40293,
+  "severity": "ERROR",
+  "timestamp": "2016-12-21T18:00:08.582Z",
+  "message": "Some error message"
+}
+```
+
+## All options
 
 ```js
-logger.fluent({
-  host: 'localhost',
-  port: '24224'
-});
+logger(app, {
+  logsToFile: false,
+  requestLogs: false,
+  appLogs: false,
+  fluent: {
+    host: '127.0.0.1',
+    port: '24224'
+  }
+})
 ```
+* logToFile: (defaults is true)
+* requestLogs: (defaults is true)
+* appLogs: (default is true)
