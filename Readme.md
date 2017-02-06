@@ -1,21 +1,21 @@
 # micrologger
 
-Meaningful application and request logs to be used with koa microservices
+Simple but meaningful application and request logs to be used with koa microservices
 
 Support for rotating files and/or sending to a logging collector fluentd (more to come)
 
-Add to the top of your koa application and pass in koa app:
+Add to the top of your koa application and pass in koa app to get started:
 
 ```js
 const app = require('koa')();
 const logger = require('micrologger');
-logger(app);
+app.use(logger());
 ```
 This will give you all application and request logs:
 
 Make sure to pass NODE_ENV=development for local development
 
-Rotating log files will be saved to 'logs/out.log' in the root of your app.  Rotating files can be turned off by passing in logToFile:false
+Rotating log files will be saved to 'logs/out.log' in the root of your app.  Pass logToFile:true in the options and pass in NODE_ENV=developemnt to use rotating files
 
 That is all you need for micrologger to start collecting and sending logs.
 
@@ -109,12 +109,12 @@ You can add fluentd as a collector
 add the fluent block below and all the logs will be sent to fluentd
 
 ```js
-logger(app, {
+app.use(logger({
   fluent: {
     host: '127.0.0.1',
     port: '24224'
   }
-});
+}))
 ```
 
 ```sh
@@ -136,7 +136,7 @@ Example of application error in /logs/out.log
 ## Log info/error
 ```js
 logger.info('Info Message');
-logger.info('Some error message');
+logger.error('Some error message');
 ```
 The info and error message will be logged with the following structure:
 
@@ -165,18 +165,17 @@ The info and error message will be logged with the following structure:
 ## All options
 
 ```js
-logger(app, {
+app.use(logger({
   logsToFile: false,
-  requestLogs: false,
-  appLogs: false,
+  appLogs: true,
   backgroundColor: 'dark',
   fluent: {
     host: '127.0.0.1',
     port: '24224'
   }
-})
+}))
 ```
-* logToFile: (default is true)
-* requestLogs: (default is true)
-* appLogs: (default is true)
-* backgroundColor: this is the background color of your terminal.  options are dark/light (default is dark)
+* logToFile: (optional, default is false)
+* appLogs: (optional, default is true) if set to false application errors will not be logged.  This does not include request errors
+* backgroundColor: (optional) this is the background color of your terminal.  options are dark/light (default is dark)
+* fluent with host, port

@@ -6,6 +6,7 @@ const os = require('os')
   , sock = zeromq.socket('pub')
   , chalk = require('chalk')
   , humanize = require('humanize-number')
+  , stripAnsi = require('strip-ansi')
   , uuid = require('uuid')
   , stream = require('stream')
   , logrotate = require('logrotate-stream')
@@ -13,9 +14,11 @@ const os = require('os')
   , name = reqPath('/package.json').name
 
 let collector;
-let logToFile = true;
+let logToFile = false;
 let color = chalk.bold.white;
-function app(app, opts) {
+let req;
+let error = false;
+function log(opts) {
   if(opts && opts.backgroundColor) {
     if(opts.backgroundColor === 'white'){
       color = chalk.bold.black;
@@ -23,6 +26,13 @@ function app(app, opts) {
       color = chalk.bold.white;
     }
   }
+  if(opts && opts.zmq) {
+    sock.connect(`tcp://${opts.zmq.addr}`);
+    collector = 'zmq';
+  }
+  if(opts && opts.logToFile === true) {
+    logToFile = true
+  } 
   if(opts && opts.fluent) {
     fluentlogger.configure('tag_prefix', {
       host: opts.fluent.host,
@@ -32,93 +42,9 @@ function app(app, opts) {
     });
     collector = 'fluent';
   }
-  if(opts && opts.zmq) {
-    sock.connect(`tcp://${opts.zmq.addr}`);
-    collector = 'zmq';
-  }
-  if(opts && opts.logToFile === false) {
-    logToFile = false
-  } 
-  if(!opts || opts && opts.appLogs !== false) {
+  if(opts && opts.appLogs !== false) {
     logUncaughtError();
   } 
-  if(!opts || opts && opts.requestLogs !== false) {
-    app.use(request());
-  } 
-}
-
-function logUncaughtError (err) {
-  process.on('uncaughtException', function(err) {
-    err = err.stack.replace(/(?:\r\n|\r|\n)\s\s+/g, ' ');
-    let log = {
-      class: 'application',
-      ident: name,
-      host: os.hostname(),
-      pid: process.pid,
-      severity: 'INFO',
-      message: err
-    }
-    if(logToFile) {
-      pipeLogsToFile(log);
-    }
-    if(process.env.NODE_ENV === 'development') {
-      console.log(chalk.red.bold(err));
-    } else {
-      collectLogs('application', log);
-    }
-    setTimeout(process.exit.bind(process, 1), 1000);
-  });
-}
-
-function logInfo (data) {
-  let log = {
-    class: 'application',
-    ident: name,
-    host: os.hostname(),
-    pid: process.pid,
-    severity: 'INFO',
-    message: data
-  }
-  if(logToFile) {
-    pipeLogsToFile(log);
-  }
-  if(process.env.NODE_ENV === 'development') {
-    console.log(color(data));
-  } else {
-    collectLogs('application', log);
-  }
-}
-
-function logError (err) {
-  let log = {
-    class: 'application',
-    ident: name,
-    host: os.hostname(),
-    pid: process.pid,
-    severity: 'ERROR',
-    message: err
-  }
-  if(logToFile) {
-    pipeLogsToFile(log);
-  }
-  if(process.env.NODE_ENV === 'development') {
-    console.log(chalk.red.bold(err));
-  } else {
-    collectLogs('application', log);
-  }
-}
-
-function pipeLogsToFile (data) {
-  let bufferStream = new stream.PassThrough();
-  bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
-  if (!fs.existsSync('./logs')){		
-    fs.mkdirSync('./logs');		
-  }
-  let toLogFile = logrotate({ file: './logs/out.log', size: '500k', keep: 7 });
-  bufferStream.pipe(toLogFile);
-}
-
-function request() {
   return function *(next) {
     let ctx = this;
     let res = ctx.res;
@@ -126,6 +52,7 @@ function request() {
     let classname = (ctx.request.headers['x-correlation-id']) ? 'service_request' : 'client_request';
     let correlationId = ctx.request.headers['x-correlation-id'] || uuid.v4();
     ctx.request.headers['x-correlation-id'] = correlationId;
+    req = true;
     try {
       yield next;
     } catch (err) {
@@ -145,7 +72,7 @@ function request() {
         request_id: requestId,
         ident: name,
         class: classname,
-        message: `${ctx.request.method} ${ctx.request.url}`,
+        message: `<-- ${ctx.request.method} ${ctx.request.url}`,
         host: os.hostname(),
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
@@ -159,7 +86,7 @@ function request() {
         request_id: requestId,
         ident: name,
         class: classname,
-        message: `${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
+        message: `--> ${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`,
         host: os.hostname(),
         client: ctx.request.ip || ctx.request.headers['x-forwarded-for'],
         path: ctx.request.url,
@@ -171,23 +98,89 @@ function request() {
         severity: ctx.response.status >= 400 ? 'ERROR' : 'INFO',
         metadata: {}
       }
-      if(logToFile){
-        pipeLogsToFile(request);
-        pipeLogsToFile(response);
+      logInfo(request.message);
+      if(response.severity === 'ERROR') {
+        logError(response.message);
+      } else {
+        logInfo(response.message);
       }
       if(process.env.NODE_ENV === 'development') {
-        console.log(chalk.cyan.underline.bold(request.message));
-        if(response.severity === 'ERROR') {
-          console.log(chalk.red.bold(response.message));
-        } else {
-          console.log(chalk.green.bold(response.message));
+        if(logToFile){
+          pipeLogsToFile(request);
+          pipeLogsToFile(response); 
         }
-      } else {
+      } else if(collector) {
         collectLogs('request', request);
         collectLogs('response', response);
       }
     }
   }
+}
+
+function logUncaughtError () {
+  process.on('uncaughtException', function(err) {
+    err = stripAnsi(err.stack);
+    error = true;
+    logError(err)
+    setTimeout(process.exit.bind(process, 1), 1000);
+  });
+}
+
+function logInfo (data) {
+  data = stripAnsi(data);
+  let log = {
+    class: 'application',
+    ident: name,
+    host: os.hostname(),
+    pid: process.pid,
+    severity: 'INFO',
+    message: data
+  }
+  if(data.indexOf('<--') !== -1){
+    console.log(chalk.cyan.underline.bold(data));
+  } else if(data.indexOf('-->') !== -1) {
+    console.log(chalk.green.bold(data));
+  } else {
+    console.log(color(data));
+    if(process.env.NODE_ENV === 'development') {
+      if(logToFile){
+        pipeLogsToFile(log);
+      }
+    } else if(collector) {
+        collectLogs('application', log);
+    }
+  }
+}
+
+function logError (err) {
+  err = stripAnsi(err);
+  let log = {
+    class: 'application',
+    ident: name,
+    host: os.hostname(),
+    pid: process.pid,
+    severity: 'ERROR',
+    message: err
+  }
+  console.error(chalk.red.bold(err));
+  if(process.env.NODE_ENV === 'development') {
+    if(logToFile){
+      pipeLogsToFile(log);
+    }
+  } else if(collector && error) {
+    collectLogs('application', log);
+    error = false;
+  }
+}
+
+function pipeLogsToFile (data) {
+  let bufferStream = new stream.PassThrough();
+  bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
+  if (!fs.existsSync('./logs')){		
+    fs.mkdirSync('./logs');		
+  }
+  let toLogFile = logrotate({ file: './logs/out.log', size: '500k', keep: 7 });
+  bufferStream.pipe(toLogFile);
 }
 
 function collectLogs(type, data) {
@@ -211,6 +204,6 @@ function time(start) {
   return humanize(delta);
 }
 
-module.exports = app
+module.exports = log
 module.exports.info = logInfo
 module.exports.error = logError
