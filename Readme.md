@@ -13,7 +13,7 @@ app.use(logger());
 ```
 This will give you all application and request logs:
 
-Make sure to pass NODE_ENV=development for local development
+Make sure to pass NODE_ENV=development for local development logs
 
 Rotating log files will be saved to 'logs/out.log' in the root of your app.  Pass logToFile:true in the options and pass in NODE_ENV=developemnt to use rotating files
 

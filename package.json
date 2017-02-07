@@ -1,6 +1,6 @@
 {
   "name": "micrologger",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "koa microservice application and request logging",
   "main": "index.js",
   "scripts": {
@@ -15,13 +15,16 @@
     "logs",
     "logging",
     "koa",
+    "koa logger",
+    "koa logs",
+    "koa-logs",
     "middleware",
-    "microservice"
+    "microservice",
+    "microservice logs"
   ],
   "author": "Erik Scott",
   "license": "MIT",
   "dependencies": {
-    "ain2": "^2.0.0",
     "app-root-path": "^2.0.1",
     "chalk": "^1.1.3",
     "fluent-logger": "^2.2.0",
