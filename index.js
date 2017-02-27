@@ -120,7 +120,6 @@ function log(opts) {
 function logUncaughtError () {
   process.on('uncaughtException', function(err) {
     err = stripAnsi(err.stack);
-    error = true;
     logError(err)
     setTimeout(process.exit.bind(process, 1), 1000);
   });
@@ -167,9 +166,8 @@ function logError (err) {
     if(logToFile){
       pipeLogsToFile(log);
     }
-  } else if(collector && error) {
+  } else {
     collectLogs('application', log);
-    error = false;
   }
 }
 
