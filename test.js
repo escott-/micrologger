@@ -1,4 +1,6 @@
 'use strict';
 
 
-let logger = '';
+const LOG = require('./');
+
+console.log(LOG)
