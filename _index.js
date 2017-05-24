@@ -1,5 +1,5 @@
 'use strict';
-const os = require('os') 
+const os = require('os')
   , fs = require('fs')
   , fluentlogger = require('fluent-logger')
   , zeromq = require('zmq')
@@ -32,7 +32,7 @@ function log(opts) {
   }
   if(opts && opts.logToFile === true) {
     logToFile = true
-  } 
+  }
   if(opts && opts.fluent) {
     fluentlogger.configure('tag_prefix', {
       host: opts.fluent.host,
@@ -44,7 +44,7 @@ function log(opts) {
   }
   if(opts && opts.appLogs !== false) {
     logUncaughtError();
-  } 
+  }
   return function *(next) {
     let ctx = this;
     let res = ctx.res;
@@ -107,7 +107,7 @@ function log(opts) {
       if(process.env.NODE_ENV === 'development') {
         if(logToFile){
           pipeLogsToFile(request);
-          pipeLogsToFile(response); 
+          pipeLogsToFile(response);
         }
       } else if(collector) {
         collectLogs('request', request);
@@ -174,8 +174,8 @@ function logError (err) {
 function pipeLogsToFile (data) {
   let bufferStream = new stream.PassThrough();
   bufferStream.end(new Buffer(JSON.stringify(data) + '\n'));
-  if (!fs.existsSync('./logs')){		
-    fs.mkdirSync('./logs');		
+  if (!fs.existsSync('./logs')){
+    fs.mkdirSync('./logs');
   }
   let toLogFile = logrotate({ file: './logs/out.log', size: '500k', keep: 7 });
   bufferStream.pipe(toLogFile);
