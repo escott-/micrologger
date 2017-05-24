@@ -6,15 +6,15 @@ const STRIP_ANSI = require('strip-ansi');
 //   All data being collected must be of a standard format, so it is unaffected by the level
 class Level {
   constructor (opts={}) {
-    this.severity        = opts.name || 'NOOP';     // level name for debugging
-    this.keyword         = opts.keyword || 'NOOP';  // level/function name for use in the logger
-    this.weight          = opts.weight || Infinity; // weight used for min logging level
-    this.enabled         = opts.enabled || false;   // whether or not the level is enables for print
-    this.color           = opts.color || false;     // Text color the level should print with
-    this.bold            = opts.bold || false;      // Whether or not the text should be bold
-    this.backgroundColor = opts.backgroundColor;    // background color of the text
-    this.colorize        = opts.colorize || s => s  // function to set color of text
-    this.customFormatter = opts.formatter || false  // formatter to run instead of the default
+    this.severity        = opts.name || 'NOOP';      // level name for debugging
+    this.keyword         = opts.keyword || 'NOOP';   // level/function name for use in the logger
+    this.weight          = opts.weight || Infinity;  // weight used for min logging level
+    this.enabled         = opts.enabled || false;    // whether or not the level is enables for print
+    this.color           = opts.color || false;      // Text color the level should print with
+    this.bold            = opts.bold || false;       // Whether or not the text should be bold
+    this.backgroundColor = opts.backgroundColor;     // background color of the text
+    this.colorize        = opts.colorize || ((s) => s); // function to set color of text
+    this.customFormatter = opts.formatter || false   // formatter to run instead of the default
 
     if (this.color) this.setColor(opts.color);
 
