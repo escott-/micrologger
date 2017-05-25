@@ -3,7 +3,7 @@
 const Level = require('./level');
 
 class CriticalLevel extends Level {
-  constructor (opts) {
+  constructor (opts={}) {
     opts.severity  = 'critical';
     opts.keyword = 'crit';
     opts.value = 2;
@@ -11,7 +11,7 @@ class CriticalLevel extends Level {
   }
 
   print (message) {
-    console.log(this.colorize(message));
+    this.stderr(this.colorize(message));
   }
 }
 

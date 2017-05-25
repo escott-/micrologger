@@ -6,6 +6,7 @@ const Collector = require('./collector');
 
 class FluentCollector extends Collector {
   constructor (opts={}) {
+    super(opts);
     this.type              = 'fluent';
     this.host              = opts.host || '127.0.0.1';
     this.port              = opts.port || 3000;

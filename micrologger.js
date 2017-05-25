@@ -3,64 +3,76 @@
 const STRIP_ANSI = require('strip-ansi');
 const UUID       = require('uuid');
 const REQ_PATH   = require('app-root-path').require;
-const HUMANIZE   = require('humanize-number')
+const OS         = require('os');
 
 const COLLECTORS = require('./collectors');
 const LEVELS     = require('./levels');
 
 class Micrologger {
   constructor (opts={}) {
-    this.name              = opts.name || reqPath('/package.json').name;
+    this.name              = opts.name || REQ_PATH('/package.json').name;
     this.color             = opts.color || false;
     this.bold              = opts.bold || false;
     this.backgroundColor   = opts.backgroundColor || false;
     this.logToFile         = (opts.logToFile === true);
+    this.stripAnsi         = (opts.stripAnsi === false ? false : true);
+    this.hostname          = opts.hostname || OS.hostname();
     this.collectors        = opts.collectors || {};
     this.requestIdHeader   = opts.requestIdHeader || 'x-request-id';
     this.correlationHeader = opts.correlationHeader || 'x-correlation-id';
     this.correlationGen    = opts.correlationGen || (() => UUID.v4());
-    this.hostname          = opts.hostname || os.hostname();
-    this.stripAnsi         = this.stripAnsi === false || true;
     this.levels            = opts.levels || false;
     this.levelSeverity     = opts.level || opts.severity ||  'ALL';
     this.levelValue        = Infinity;
 
     this.formatReq = opts.formatReq || ((ctx) => {
-      return `<-- ${ctx.request.method} ${ctx.request.url}`;
+      return `<-- ${ctx.method} ${ctx.path}`;
     });
 
     this.formatRes = opts.formatRes || ((ctx) => {
-      return `--> ${ctx.response.status} ${ctx.response.message} ${ctx.request.url}`;
+      return `--> ${ctx.method} ${ctx.path} ${ctx.status}`;
     })
 
 
     // If a single collector was specified, add it
     let collectors = Object.keys(this.collectors);
-    if (this.collector && !collectors.length) {
-      this.useCollector(this.collector);
+    if (opts.collector && !collectors.length) {
+      this.useCollector(opts.collector);
 
     // Add the list of collectors passed
     } else {
-      for (collector of collectors) {
-        this.setCollector(this.collector, this.collector);
+      for (let collector of collectors) {
+        let cltr = this.collectors[collector];
+        this.useCollector(cltr, cltr);
       }
     }
 
-    // If custom levels were not set
+    // If custom levels were not set, apply default syslog
     if (!this.levels) {
       this.levels = {};
       let levels = Object.keys(LEVELS);
-      if (let severity of levels) {
-        this.levels[severity] = new levels[severity]({
-          color : this.color,
-          bold  : this.bold,
+      for (let severity of levels) {
+        if (severity === 'level') continue;
+        this.levels[severity] = new LEVELS[severity]({
+          color           : this.color,
+          bold            : this.bold,
+          backgroundColor : this.backgroundColor,
         });
+      }
+
+    // Validate custom levels
+    } else {
+      let levels = Object.keys(this.levels);
+      for (let severity of levels) {
+        if (!(this.levels[severity] instanceof LEVELS.level)) {
+          throw Error(`Attempted to use level which is not a subclass of Level: [${severity}]`);
+        }
       }
     }
 
-    // find the lowest level allowed to be logged
-    if (opts.levelSeverity && (opts.level || opts.severity)) {
-      let level = this.levels[opts.levelSeverity];
+    // find the lowest level allowed to be logged (if passed as an option)
+    if (this.levelSeverity && (opts.level || opts.severity)) {
+      let level = this.levels[this.levelSeverity.toLowerCase()];
       if (!level) {
         throw Error(`Attempted to set unknown logging level [${opts.levelSeverity}]`);
       }
@@ -72,21 +84,22 @@ class Micrologger {
     for (let level of levels) {
       let lvl    = this.levels[level];
       let lvlVal = lvl.value
-      if (lvlVal >= log.levelValue) {
+      if (lvlVal <= this.levelValue) {
         this.levels[level].enable();
       } else {
         this.levels[level].disable();
       }
 
-      if (this[lvl.severity]) {
+      if (this[lvl.severity] && !this[lvl.severity].isLevel) {
         throw Error(`Attempted to overwrite existing logger propterty level with severity [${level}]`)
       }
 
-      if (this[lvl.keyword]) {
+      if (this[lvl.keyword] && !this[lvl.keyword].isLevel) {
         throw Error(`Attempted to overwrite existing logger propterty level keyword [${level}]`)
       }
 
       this[lvl.severity] = this[lvl.keyword] = (data) => this.log(level, data);
+      this[lvl.severity].isLevel = this[lvl.keyword].isLevel = true
     }
   }
 
@@ -99,8 +112,9 @@ class Micrologger {
     let type = (collector.type || '').toLowerCase();
 
     // Custom collector injection
-    if (collector.prototype instanceof COLLECTORS.Collector) {
+    if (collector instanceof COLLECTORS.collector) {
       this.collectors[type] = collector;
+      return;
     }
 
     // Known collector configuration
@@ -119,27 +133,38 @@ class Micrologger {
   collect (data={}) {
     let names = Object.keys(this.collectors || []);
     for (let name of names) {
-console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
       this.collectors[name].collect(data);
     }
   }
 
-  log (level, data) {
-    // Normalize data
-    if (typeof data === 'string') data = { message: data };
-    data.severity = level.toUpperCase();
-    data.level    = level.toLowerCase();
-    data.message  = this.stripAnsi ? STRIP_ANSI(data.message): data.message;
+  log (level='', data='') {
+    let norm = {};
 
-    // Use the appropriate logger
-    let logger    = this.levels[data.level];
-    if (logger && logger.enabled) {
-      logger.log(data);
-      this.collect(data);
+    // Assign string s object
+    if (typeof data === 'string') {
+      norm.message = data;
+
+    // Naive clone to leave data unaffected
     } else {
-      console.warn(`Tried to use unknown log level [${data.level}] for message: ${data.message}`);
+      let keys = Object.keys(data);
+      for (let key of keys) norm[key] = data[key];
     }
 
+    // Perform normalizations
+    norm.severity = level.toUpperCase();
+    norm.level    = level.toLowerCase();
+    norm.message  = this.stripAnsi ? STRIP_ANSI(norm.message): norm.message;
+
+    // Use the appropriate logger
+    let logger = this.levels[norm.level];
+    if (!logger) {
+      return console.warn(`Attempted to use unknown log level [${norm.level}] for message: ${norm.message}`);
+    }
+
+    if (logger.enabled) {
+      logger.log(norm);
+      this.collect(norm);
+    }
   }
 
   // Middleware for req/res logging
@@ -151,7 +176,6 @@ console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
     let requestIdHeader   = opts.requestIdHeader || this.requestIdHeader;
 
     return async (ctx, next) => {
-      let ctx           = this;
       let res           = ctx.res;
       let reqTime       = new Date();
       let reqId         = UUID.v4();
@@ -160,13 +184,7 @@ console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
       ctx.request.headers[correlationHeader] = correlationId;
       ctx.request.headers[requestIdHeader]   = correlationId;
 
-      try {
-        yield next;
-      } catch (err) {
-        throw err;
-      }
-
-      let done(evt) => {
+      let done = (evt) => {
         let resTime = new Date();
         res.removeListener('finish', onFinish);
         res.removeListener('close', onClose);
@@ -174,7 +192,6 @@ console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
           requestId      : reqId,
           classname      : classname,
           correlationId  : correlationId,
-          message        : format(ctx),
           resolutionTime : resTime - reqTime,
           requestTime    : reqTime.toString(),
           responseTime   : res.toString(),
@@ -182,15 +199,23 @@ console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
           formatRes      : formatRes,
         };
 
-        this.log('INFO', this._buildReqLog(ctx, logBase));
-        let resLevel = (ctx.response.status >= 400 ? 'INFO' : 'ERROR');
-        this.log(resLevel, this._buildResLog(ctx, logBase));
+        logBase.message = formatReq(ctx);
+        this.log('informational', this.buildReqLog(ctx, logBase));
+        let resLevel    = (ctx.response.status >= 400 ? 'informational' : 'error');
+        logBase.message = formatRes(ctx);
+        this.log(resLevel, this.buildResLog(ctx, logBase));
       };
 
       let onFinish = done.bind(null, 'finish');
       let onClose = done.bind(null, 'close');
       res.once('finish', onFinish);
       res.once('close', onClose);
+
+      try {
+        await next();
+      } catch (err) {
+        throw err;
+      }
     }
   }
 
@@ -198,41 +223,41 @@ console.log(`COLLECTING [${name}]: ${data}`) // TODO: remove
   // Helpers
   //
 
-  _buildReqLog (ctx, base) {
+  buildReqLog (ctx, base) {
     return {
       request_id     : base.requestId,
       class          : base.classname,
       correlation_id : base.correlationId,
       request_time   : base.requestTime,
-      message        : base.format(ctx),
+      message        : base.message,
       ident          : this.name,
       host           : this.hostname,
       client         : ctx.request.ip || ctx.request.headers['x-forwarded-for'],
-      path           : ctx.request.url,
-      method         : ctx.request.method,
-      severity       : 'INFO',
+      path           : ctx.path,
+      method         : ctx.method,
+      severity       : 'informational',
       metadata       : {}
     }
   }
 
-  _buildResLog (ctx, base) {
+  buildResLog (ctx, base) {
     return {
       request_id      : base.requestId,
       class           : base.classname,
       correlation_id  : base.correlationId,
-      message         : base.format(ctx),
+      message         : base.message,
       resolution_time : base.resolvedTime,
+      response_time   : base.resolutionTime.toString(),
       ident           : this.name,
       host            : this.hostname,
       client          : ctx.request.ip || ctx.request.headers['x-forwarded-for'],
-      path            : ctx.request.url,
-      method          : ctx.request.method,
-      response_time   : resTime.toString(),
+      path            : ctx.path,
+      method          : ctx.method,
       status          : ctx.response.status,
-      severity        : ctx.response.status >= 400 ? 'ERROR' : 'INFO',
+      severity        : ctx.response.status >= 400 ? 'error' : 'informational',
       metadata        : {}
     }
   }
 }
 
-module.export = Micrologger;
+module.exports = Micrologger;

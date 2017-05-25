@@ -5,8 +5,8 @@ const CHALK      = require('chalk');
 
 const Level = require('./level');
 
-class InformationLevel extends Level {
-  constructor (opts) {
+class InformationalLevel extends Level {
+  constructor (opts={}) {
     opts.severity  = 'information';
     opts.keyword = 'info';
     opts.value = 6;
@@ -15,13 +15,13 @@ class InformationLevel extends Level {
 
   print (message) {
     let msg = message;
-
+    
     // Special case: request logging
-    if(data.indexOf('<--') !== -1) {
+    if(message.indexOf('<--') !== -1) {
       msg = CHALK.cyan.underline.bold(message);
 
     // Special case: response logging
-    } else if(data.indexOf('-->') !== -1) {
+    } else if(message.indexOf('-->') !== -1) {
       msg = CHALK.green.bold(message);
 
 
@@ -29,8 +29,8 @@ class InformationLevel extends Level {
       msg = this.colorize(message);
     }
 
-    console.log(msg);
+    this.stdout(msg);
   }
 }
 
-module.exports = InformationLevel;
+module.exports = InformationalLevel;

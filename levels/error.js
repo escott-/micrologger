@@ -3,7 +3,7 @@
 const Level = require('./level');
 
 class ErrorLevel extends Level {
-  constructor (opts) {
+  constructor (opts={}) {
     opts.severity  = 'error';
     opts.keyword = 'err';
     opts.value = 3;
@@ -11,7 +11,7 @@ class ErrorLevel extends Level {
   }
 
   print (message) {
-    console.log(this.colorize(message));
+    this.stderr(this.colorize(message));
   }
 }
 

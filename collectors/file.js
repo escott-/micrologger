@@ -7,6 +7,7 @@ const Collector = require('./collector');
 
 class FileCollector extends Collector {
   constructor (opts={}) {
+    super(opts);
     this.type = 'fluent';
     this.path  = opts.path || './logs/out.log';
   }

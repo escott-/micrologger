@@ -10,7 +10,7 @@ class ZmqCollector extends Collector {
     this.type = 'zmq';
     this.host = opts.host || '127.0.0.1';
     this.port = opts.port || 5555;
-    this.sock = zeromq.socket('pub');
+    this.sock = ZMQ.socket('pub');
     this.sock.connect(`tcp://${this.host}:${this.port}`);
   }
 

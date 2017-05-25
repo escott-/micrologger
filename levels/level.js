@@ -1,6 +1,7 @@
 'use strict';
 
 const STRIP_ANSI = require('strip-ansi');
+const CHALK      = require('chalk');
 
 // Level classes are used to determing how a given level should be written to the console.
 //   All data being collected must be of a standard format, so it is unaffected by the level
@@ -8,7 +9,7 @@ class Level {
   constructor (opts={}) {
     this.severity        = opts.name || 'NOOP';      // level name for debugging
     this.keyword         = opts.keyword || 'NOOP';   // level/function name for use in the logger
-    this.weight          = opts.weight || Infinity;  // weight used for min logging level
+    this.value           = opts.value === 0 ? 0 : (opts.value || Infinity);  // weight used for min logging level
     this.enabled         = opts.enabled || false;    // whether or not the level is enables for print
     this.color           = opts.color || false;      // Text color the level should print with
     this.bold            = opts.bold || false;       // Whether or not the text should be bold
@@ -23,8 +24,13 @@ class Level {
     // If the backgroundColor is white, make sure the text is dark
     if(opts.backgroundColor === 'white' && !this.color) {
       this.color    = 'black'
-      this.colorize = chalk.black;
+      this.colorize = CHALK.black;
     }
+  }
+
+  // Set the formatter for the level
+  setFormatter (formatter) {
+    this.customFormatter = formatter || false;
   }
 
   // Format a string to print
@@ -36,15 +42,25 @@ class Level {
     }
   }
 
-  // Print the string
-  print (message) {
-    console.log(message);
-  }
-
   // format and print the data, if level is enabled
   log (data) {
     if (!this.enabled) return;
-    this.print(this.format(data))
+    this.print(this.format(data));
+  }
+
+  // log the data to stgout
+  print (message) {
+    this.stdout(message);
+  }
+
+  // log to stdout
+  stdout (message) {
+    console.log(message);
+  }
+
+  // log to stderr
+  stderr (message) {
+    console.error(message);
   }
 
   enable () {
@@ -56,7 +72,7 @@ class Level {
   }
 
   setColor(color) {
-    let colorize = chalk[color];
+    let colorize = CHALK[color];
     if (!colorize) {
       throw Error(`Attempted to set unsupported color [${color}]`);
     }
