@@ -91,8 +91,6 @@ class Micrologger {
       if (this[lvl.keyword] && !this[lvl.keyword].isLevel) {
         throw Error(`Attempted to overwrite existing logger propterty level keyword [${level}]`)
       }
-console.log(lvl.severity)
-console.log(lvl.keyword)
       this[lvl.severity] = this[lvl.keyword] = (data) => this.log(level, data);
       this[lvl.severity].isLevel = this[lvl.keyword].isLevel = true
     }
