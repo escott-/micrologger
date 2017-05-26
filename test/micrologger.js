@@ -45,7 +45,6 @@ describe('micrologger', () => {
       expect(m.color).to.be.false;
       expect(m.bold).to.be.false;
       expect(m.backgroundColor).to.be.false;
-      expect(m.logToFile).to.be.false;
       expect(m.stripAnsi).to.be.true;
       expect(m.hostname).to.equal(OS.hostname());
       expect(m.formatReq).to.be.a('function');
@@ -89,7 +88,6 @@ describe('micrologger', () => {
         color: 'green',
         bold: 'BOLD',
         backgroundColor: 'BKG_COLOR',
-        logToFile: true,
         stripAnsi: false,
         hostname: 'HOSTNAME',
         formatReq: () => 'FORMATTED',
@@ -173,7 +171,81 @@ describe('micrologger', () => {
 
     it('should allow settings overrides', () => {
       let m = new Micrologger();
-      expect();
+      // TODO
+    });
+  });
+
+  describe('useCollector', () => {
+    it('should add the predefined collectors to the list of active collectors', () => {
+      let m = new Micrologger();
+      m.useCollector('zmq', {
+        host : '127.0.0.1',
+        port : 5555,
+      });
+
+      expect(m.collectors.zmq).instanceof(Collector);
+      m.collectors.zmq.collect = sinon.spy();
+      m.collect('test');
+      expect(m.collectors.zmq.collect.called).to.be.true;
+    });
+
+    it('should add the custom collector to the list of active collectors', () => {
+      class MyCollector extends Collector{
+        constructor () {
+          super();
+          this.type = 'mine';
+          this.collect = sinon.spy();
+        }
+      }
+
+      let m = new Micrologger();
+      m.useCollector(new MyCollector());
+
+      expect(m.collectors.mine).instanceof(Collector);
+      m.collect('test');
+      expect(m.collectors.mine.collect.called).to.be.true;
+    });
+
+    it('should error if the collector is invalid', () => {
+      let m = new Micrologger();
+      expect(() => m.useCollector('fail')).throw(Error);
+      expect(Object.keys(m.collectors)).to.have.length(0);
+    });
+  });
+
+  describe('setColor', () => {
+    it('should set all levels to use the color', () => {
+      let m = new Micrologger();
+      m.setColor('blue');
+      let levels = Object.keys(m.levels);
+      for (let lvl of levels) expect(m.levels[lvl].color).to.equal('blue');
+    });
+
+    it('error for unsupported colors', () => {
+      let m = new Micrologger();
+      expect(() => m.setColor('nonsense')).to.throw(Error);
+    });
+  });
+
+  describe('setBold', () => {
+    it('should set all levels to use the bold setting', () => {
+      let m = new Micrologger();
+      let levels = Object.keys(m.levels);
+      m.setBold(true);
+      for (let lvl of levels) expect(m.levels[lvl].bold).to.be.true;
+      m.setBold(false);
+      for (let lvl of levels) expect(m.levels[lvl].bold).to.be.false;
+    });
+  });
+
+  describe('setStripAnsi', () => {
+    it('should set all levels to use the strip-ansi-encoding setting', () => {
+      let m = new Micrologger();
+      let levels = Object.keys(m.levels);
+      m.setStripAnsi(true);
+      expect(m.stripAnsi).to.be.true;
+      m.setStripAnsi(false);
+      expect(m.stripAnsi).to.be.false;
     });
   });
 

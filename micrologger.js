@@ -14,7 +14,6 @@ class Micrologger {
     this.color             = opts.color || false;
     this.bold              = opts.bold || false;
     this.backgroundColor   = opts.backgroundColor || false;
-    this.logToFile         = (opts.logToFile === true);
     this.stripAnsi         = (opts.stripAnsi === false ? false : true);
     this.hostname          = opts.hostname || OS.hostname();
     this.collectors        = opts.collectors || {};
@@ -80,15 +79,10 @@ class Micrologger {
     }
 
     // Enable/disable levels based on value, and expose them on the base of the object
+    this.setLevel(this.levelSeverity)
     let levels = Object.keys(this.levels);
     for (let level of levels) {
       let lvl    = this.levels[level];
-      let lvlVal = lvl.value
-      if (lvlVal <= this.levelValue) {
-        this.levels[level].enable();
-      } else {
-        this.levels[level].disable();
-      }
 
       if (this[lvl.severity] && !this[lvl.severity].isLevel) {
         throw Error(`Attempted to overwrite existing logger propterty level with severity [${level}]`)
@@ -109,7 +103,7 @@ class Micrologger {
        throw Error('Attempted to set undefined collector');
     }
 
-    let type = (collector.type || '').toLowerCase();
+    let type = ((typeof collector === 'string' ? collector: collector.type) || '').toLowerCase();
 
     // Custom collector injection
     if (collector instanceof COLLECTORS.collector) {
@@ -128,6 +122,44 @@ class Micrologger {
     }
 
     this.collectors[type] = new Collector(config);
+  }
+
+  // set color for levels
+  setColor (color) {
+    let levels = Object.keys(LEVELS);
+    for (let severity of levels) {
+      if (severity === 'level') continue;
+      this.levels[severity].setColor(color);
+    }
+  }
+
+  // set boldness for levels
+  setBold (bold=true) {
+    let levels = Object.keys(LEVELS);
+    for (let severity of levels) {
+      if (severity === 'level') continue;
+      this.levels[severity].bold = bold;
+    }
+  }
+
+  // set whether or not to strip ansi encoding
+  setStripAnsi (bool=true) {
+    this.stripAnsi = bool;
+  }
+
+  // set what level to log to
+  setLevel (severity) {
+    this.levelSeverity = severity;
+    let levels = Object.keys(this.levels);
+    for (let level of levels) {
+      let lvl    = this.levels[level];
+      let lvlVal = lvl.value
+      if (lvlVal <= this.levelValue) {
+        this.levels[level].enable();
+      } else {
+        this.levels[level].disable();
+      }
+    }
   }
 
   collect (data={}) {
