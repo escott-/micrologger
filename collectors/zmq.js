@@ -15,7 +15,7 @@ class ZmqCollector extends Collector {
   }
 
   collect (type='generic', data={}) {
-    sock.send([type, JSON.stringify(data)]);
+    this.sock.send([type, JSON.stringify(data)]);
   }
 }
 
