@@ -7,7 +7,7 @@ const CHALK      = require('chalk');
 //   All data being collected must be of a standard format, so it is unaffected by the level
 class Level {
   constructor (opts={}) {
-    this.severity        = opts.name || 'NOOP';      // level name for debugging
+    this.severity        = opts.severity || 'NOOP';      // level name for debugging
     this.keyword         = opts.keyword || 'NOOP';   // level/function name for use in the logger
     this.value           = opts.value === 0 ? 0 : (opts.value || Infinity);  // weight used for min logging level
     this.enabled         = opts.enabled || false;    // whether or not the level is enables for print
